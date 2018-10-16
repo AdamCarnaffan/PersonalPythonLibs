@@ -215,17 +215,20 @@ class Matrix:
     def cofactor(self): # Only for square matricies
         if self.rows != self.cols:
             return False
-        # If is has a determinant, compute!
+        # If its has a determinant, compute!
         if self.rows == 2:
             dup = self.M
             self.M[0][0] = dup.M[1][1]
             self.M[0][1] = -dup.M[0][1]
             self.M[1][0] = -dup.M[1][0]
             self.M[1][1] = dup.M[0][0]
+            print(self.M)
             return True
         else:
+            dup = self.duplicate()
             for r in range(0, self.rows, 1):
                 targetRows = self.M[0:r] + self.M[r+1:self.rows]
+                #print(targetRows)
                 for c in range(0, self.cols, 1):
                     # Generate mini target list
                     miniM = []
@@ -235,11 +238,13 @@ class Matrix:
                         tempR = tempR + row[0:c]
                         tempR = tempR + row[c+1:self.cols]
                         miniM = miniM + [tempR]
+                    print(miniM)
                     if (c+r) % 2 == 0:
                         val = Matrix(miniM).getDeterminant()
                     else:
                         val = -Matrix(miniM).getDeterminant()
-                    self.M[r][c] = val
+                    dup.M[r][c] = val
+                self.M = dup.M
             return True
     
     def duplicate(self):
