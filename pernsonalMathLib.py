@@ -4,18 +4,19 @@ def translateMathIndexToCode(ind):
     else:
         return ind
 
+
 class Matrix:
     def __init__(self, inList):
         # inList should be a list of lists representing the data structure
         # Process list and check length of rows
         if type(inList) != list:
             raise ValueError("Input value must be a list")
-        
+
         self.rows = len(inList)
         self.cols = 0
-        
-        self.valType = int # Default expected datatype
-        
+
+        self.valType = int  # Default expected datatype
+
         # Scan list for expected col length
         for row in inList:
             if type(row) != list:
@@ -26,12 +27,11 @@ class Matrix:
                     raise ValueError("The data in a matrix must be numeric")
             elif len(row) < self.cols or self.cols == 0:
                 self.cols = len(row)
-        
-        #Process and create the matrix construct
+        # Process and create the matrix construct
         self.M = []
         # Generate the matrix empty
         for r in range(0, self.rows, 1):
-            self.M = self.M + [[]] # Defines a new row
+            self.M = self.M + [[]]  # Defines a new row
             for c in range(0, self.cols, 1):
                 self.M[r] = self.M[r] + [0]
         # Type the empty matrix properly
@@ -52,7 +52,7 @@ class Matrix:
                         raise ValueError("The data in a matrix must be numeric")
                     tempCInd = tempCInd + 1
                 tempRInd = tempRInd + 1
-        
+
     def checkDataType(self, val):
         try:
             temp = float(val)
@@ -62,7 +62,7 @@ class Matrix:
             return True
         except:
             return False
-            
+
     def cleanData(self, val):
         if self.valType == float:
             return float(val)
@@ -70,7 +70,7 @@ class Matrix:
             return int(val)
         else:
             return False
-            
+
     def setDataType(self, typeStr):
         prevType = self.valType
         if typeStr == "float":
@@ -80,22 +80,22 @@ class Matrix:
         # Re-calculate all values if not same type as before
         if prevType != self.valType:
             self.recalculate()
-            
+
     def recalculate(self):
         for r in range(0, self.rows, 1):
             for c in range(0, self.cols, 1):
                 self.M[r][c] = self.cleanData(self.M[r][c])
-    
+
     # User speaks math --> Row index 0 is row 1 to user (stakeholder evaluation)
-        
+
     def getValue(self, row, col):
         # r = translateMathIndexToCode(row)
         # c = translateMathIndexToCode(col)
-        if (r < self.rows) and (c < self.cols):
-            return self.M[r][c]
+        if (row < self.rows) and (col < self.cols):
+            return self.M[row][col]
         else:
             return False
-            
+
     def setValue(self, row, col, val):
         if (row < self.rows) and (col < self.cols):
             self.M[row][col] = self.cleanData(val)
@@ -103,22 +103,22 @@ class Matrix:
         else:
             print("WARNING: The value could not be set as this position does not exist in the matrix")
             return False
-    
+
     def getRow(self, row):
         # r = translateMathIndexToCode(row)
-        if r < self.rows:
-            return self.M[r]
+        if row < self.rows:
+            return self.M[row]
         else:
             return False
-            
+
     def setRow(self, row, inRow):
         # r = translateMathIndexToCode(row)
-        if r < self.rows:
+        if row < self.rows:
             if len(inRow) == self.cols:
                 # Default col index
                 c = 0
                 for val in inRow:
-                    self.M[r][c] = self.cleanData(val)
+                    self.M[row][c] = self.cleanData(val)
                     c = c + 1
                 return True
             else:
@@ -126,7 +126,7 @@ class Matrix:
         else:
             print("WARNING: The values could not be set as this row does not exist in the matrix")
             return False
-            
+
     def display(self):
         printStr = ""
         for row in self.M:
@@ -135,15 +135,15 @@ class Matrix:
             printStr = printStr + "\n"
         print(printStr)
         return True
-        
+
     def setDims(rows, columns):
         x = []
         for r in range(0, rows, 1):
-            x = x + [[]] # Defines a new row
+            x = x + [[]]  # Defines a new row
             for c in range(0, columns, 1):
-                x[r] = x[r] + [0] # Add a value to the row to generate column length
+                x[r] = x[r] + [0]  # Add a value to the row to generate column length
         return Matrix(x)
-        
+
     def __add__(self, other):
         if (self.rows == other.rows) and (self.cols == other.cols):
             finalM = Matrix.setDims(self.rows, self.cols)
@@ -153,7 +153,7 @@ class Matrix:
             return finalM
         else:
             raise ValueError("Matricies must be of the same dimmensions to add")
-            
+
     def __mul__(self, other):
         if (self.cols == other.rows):
             finalM = Matrix.setDims(self.rows, other.cols)
@@ -167,7 +167,7 @@ class Matrix:
             return finalM
         else:
             raise ValueError("Cannot multiply these matricies")
-            
+
     def scale(self, scalar):
         if not self.checkDataType(scalar):
             return False
@@ -175,11 +175,11 @@ class Matrix:
             for c in range(0, self.cols, 1):
                 self.setValue(r, c, scalar*self.M[r][c])
         return True
-    
+
     def invert(self):
         if self.rows != self.cols:
             return False
-        #Get the determinant
+        # Get the determinant
         determinant = self.getDeterminant()
         if determinant == 0:
             return False
@@ -191,12 +191,12 @@ class Matrix:
         # Set adjusted to self
         self.M = adjusted.M
         return True
-    
+
     def adjugate(self):
-        self.cofactor() # Adjugate 
-        self.transpose() # GOTTA DEFINE DAT
+        self.cofactor()
+        self.transpose()
         return True
-        
+
     def transpose(self):
         old = self.duplicate()
         # Update row and columns count
@@ -211,24 +211,27 @@ class Matrix:
         # Reflect onto original
         self.M = new.M
         return True
-        
-    def cofactor(self): # Only for square matricies
+
+    def cofactor(self):  # Only for square matricies
         if self.rows != self.cols:
             return False
         # If its has a determinant, compute!
         if self.rows == 2:
-            dup = self.M
+            dup = self.duplicate()
             self.M[0][0] = dup.M[1][1]
             self.M[0][1] = -dup.M[0][1]
             self.M[1][0] = -dup.M[1][0]
             self.M[1][1] = dup.M[0][0]
-            print(self.M)
+            # print(self.M)
             return True
         else:
             dup = self.duplicate()
+            # print(self.M)
             for r in range(0, self.rows, 1):
                 targetRows = self.M[0:r] + self.M[r+1:self.rows]
-                #print(targetRows)
+                # print(r, targetRows)
+                # print(self.M)
+                # print(targetRows)
                 for c in range(0, self.cols, 1):
                     # Generate mini target list
                     miniM = []
@@ -238,18 +241,24 @@ class Matrix:
                         tempR = tempR + row[0:c]
                         tempR = tempR + row[c+1:self.cols]
                         miniM = miniM + [tempR]
-                    print(miniM)
                     if (c+r) % 2 == 0:
                         val = Matrix(miniM).getDeterminant()
                     else:
                         val = -Matrix(miniM).getDeterminant()
+                    # print("BEFORE: ", self.M)
                     dup.M[r][c] = val
-                self.M = dup.M
+                    # print("AFTER: ", self.M)
+            self.M = dup.M
             return True
-    
+
     def duplicate(self):
-        return self
-        
+        new = Matrix.setDims(self.rows, self.cols)
+        # To avoid list with same pointer? (my theory)
+        for r in range(0, new.rows, 1):
+            new.M[r] = list(self.M[r])
+        new.valType = self.valType
+        return new
+
     def getDeterminant(self):
         if self.rows != self.cols:
             return False
@@ -275,7 +284,8 @@ class Matrix:
                 else:
                     det = det - tempDet
             return det
-    
+
+
 def Test():
     x = Matrix([[1,1], [1,2], [1,5]])
     x.display()
@@ -283,6 +293,7 @@ def Test():
     y = Matrix([[3,1,1,7], [4,2,2,6], [9,4,1,8], [1,9,4,5]])
     y.display()
     y.invert()
+    #y.cofactor()
     y.display()
-    
+
 Test()
