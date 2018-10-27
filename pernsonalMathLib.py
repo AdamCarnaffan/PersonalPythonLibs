@@ -6,7 +6,7 @@ def translateMathIndexToCode(ind):
 
 
 class Matrix:
-    def __init__(self, inList):
+    def __init__(self, inList, rowLabels=[], colLabels=[]):
         # inList should be a list of lists representing the data structure
         # Process list and check length of rows
         if type(inList) != list:
@@ -29,10 +29,15 @@ class Matrix:
                 self.cols = len(row)
         # Process and create the matrix construct
         self.M = []
+        self.rowLabels = []
+        self.colLabels = []
         # Generate the matrix empty
         for r in range(0, self.rows, 1):
             self.M = self.M + [[]]  # Defines a new row
+            self.rowLabels = self.rowLabels + [""]  # Add a new row label for the row
             for c in range(0, self.cols, 1):
+                if r == 0:
+                    self.colLabels = self.colLabels + [""]  # Add a new col label for the column
                 self.M[r] = self.M[r] + [0]
         # Type the empty matrix properly
         self.recalculate()
