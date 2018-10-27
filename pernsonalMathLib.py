@@ -1,3 +1,6 @@
+import math as mh
+
+
 def translateMathIndexToCode(ind):
     if ind > 0:
         return ind - 1
@@ -181,6 +184,11 @@ class Matrix:
                 self.setValue(r, c, scalar*self.M[r][c])
         return True
 
+    def returnScale(self, scalar):
+        dup = self.duplicate()
+        dup.scale(scalar)
+        return dup
+
     def invert(self):
         if self.rows != self.cols:
             return False
@@ -289,6 +297,32 @@ class Matrix:
                 else:
                     det = det - tempDet
             return det
+
+
+class Vector:
+
+    def __init__(self, x, y):
+        pass
+
+
+class Point:
+
+    def __init__(self, x, y, des = ""):
+        self.x = x
+        self.y = y
+        self.designation = des  # ID of the point (can be letter or number)
+
+    def distance(self, other):  # Other is another point
+        tempX = mh.pow(self.x + other.x, 2)
+        tempY = mh.pow(self.y + other.y, 2)
+        return mh.sqrt(tempX + tempY)
+
+    def getName(self):
+        return self.designation
+
+    def setName(self, name):
+        self.designation = name
+        return True
 
 
 def Test():
