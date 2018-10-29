@@ -14,12 +14,15 @@ class Matrix:
         # Process list and check length of rows
         if type(inList) != list:
             raise ValueError("Input value must be a list")
-
         self.rows = len(inList)
         self.cols = 0
-
         self.valType = int  # Default expected datatype
-
+        
+        # Process and create the matrix construct
+        self.M = []
+        self.rowLabels = []
+        self.colLabels = []
+        
         # Scan list for expected col length
         for row in inList:
             if type(row) != list:
@@ -27,21 +30,27 @@ class Matrix:
                     self.cols = 1
                     continue
                 else:
+                    print("hey")
                     raise ValueError("The data in a matrix must be numeric")
             elif len(row) < self.cols or self.cols == 0:
                 self.cols = len(row)
-        # Process and create the matrix construct
-        self.M = []
-        self.rowLabels = []
-        self.colLabels = []
         # Generate the matrix empty
         for r in range(0, self.rows, 1):
             self.M = self.M + [[]]  # Defines a new row
             self.rowLabels = self.rowLabels + [""]  # Add a new row label for the row
             for c in range(0, self.cols, 1):
-                if r == 0:
+                if c == 0:
                     self.colLabels = self.colLabels + [""]  # Add a new col label for the column
                 self.M[r] = self.M[r] + [0]
+        # Add labels in rows and columns starting from left/top going to last available
+        i = 0
+        for label in rowLabels:
+            self.rowLabels[i] = label
+            i = i + 1
+        i = 0
+        for label in colLabels:
+            self.colLabels[i] = label
+            i = i + 1
         # Type the empty matrix properly
         self.recalculate()
         # Default iterables for rows and cols
@@ -60,22 +69,88 @@ class Matrix:
                         raise ValueError("The data in a matrix must be numeric")
                     tempCInd = tempCInd + 1
                 tempRInd = tempRInd + 1
+        
+    def setRowLabels(self, rowLabels):
+        i = 0
+        for label in rowLabels:
+            self.rowLabels[i] = label
+            i = i + 1
+            if i >= self.rows:
+                break
+        return True
+        
+    def setColLabels(self, colLabels):
+        i = 0
+        for label in colLabels:
+            self.colLabels[i] = label
+            i = i + 1
+            if i >= self.cols:
+                break
+        return True
+    
+    def getRowByLabel(self, rowL):
+        i = 0
+        for r in self.rowLabels:
+            if rowL == r:
+                return self.M[i]
+            i = i + 1
+        return False
+            
+    def getIndexByLabel(self, label, dir):
+        ls = self.rowLabels if dir == 'row' else self.colLabels
+        i = 0
+        for l in ls:
+            if l == label:
+                return i
+            i = i + 1
+        return False
+                
+    def getValuebyLabels(self, rowL, colL):
+        foundR = False
+        val = 0
+        index = 0
+        for row in self.rowLabels:
+            if row == rowL:
+                rowList = self.M[index]
+                foundR = True
+                break
+            index = index + 1
+        if not foundR:
+            return False
+        foundL = False
+        index = 0
+        for col in self.colLabels:
+            if col == colL:
+                val = rowList[index]
+                foundL = True
+                break
+            index = index + 1
+        if not foundL:
+            return False
+        return val
 
     def checkDataType(self, val):
         try:
+            #print(val)
             temp = float(val)
+            
             # Check if float is required
             if temp != int(val):
+                #print("hey")
                 self.setDataType("float")
             return True
         except:
             return False
 
     def cleanData(self, val):
+        finalVal = val
+        if (val < 0.00000000000001 and val > 0) or (val > -0.00000000000001 and val < 0):
+            finalVal = 0
+            pass
         if self.valType == float:
-            return float(val)
+            return float(finalVal)
         elif self.valType == int:
-            return int(val)
+            return int(finalVal)
         else:
             return False
 
@@ -87,12 +162,15 @@ class Matrix:
             self.valType = int
         # Re-calculate all values if not same type as before
         if prevType != self.valType:
-            self.recalculate()
+            if len(self.M) > 0:
+                self.recalculate()
+        return True
 
     def recalculate(self):
         for r in range(0, self.rows, 1):
             for c in range(0, self.cols, 1):
                 self.M[r][c] = self.cleanData(self.M[r][c])
+        return True
 
     # User speaks math --> Row index 0 is row 1 to user (stakeholder evaluation)
 
@@ -104,9 +182,21 @@ class Matrix:
         else:
             return False
 
-    def setValue(self, row, col, val):
+    def setValue(self, row, col, val, overrideType = False):
         if (row < self.rows) and (col < self.cols):
+            if overrideType:
+                self.checkDataType(val)
             self.M[row][col] = self.cleanData(val)
+            return True
+        else:
+            print("WARNING: The value could not be set as this position does not exist in the matrix")
+            return False
+
+    def setValueByLabels(self, rowL, colL, val, overrideType = False):
+        if self.checkLabels([rowL], 'row') and self.checkLabels([colL], 'col'):
+            if overrideType:
+                self.checkDataType(val)
+            self.setValue(self.getIndexByLabel(rowL, 'row'), self.getIndexByLabel(colL, 'col'), val, True)
             return True
         else:
             print("WARNING: The value could not be set as this position does not exist in the matrix")
@@ -114,8 +204,11 @@ class Matrix:
 
     def getRow(self, row):
         # r = translateMathIndexToCode(row)
+        result = []
         if row < self.rows:
-            return self.M[row]
+            for val in self.M[row]:
+                result = result + [val]
+            return result
         else:
             return False
 
@@ -133,6 +226,20 @@ class Matrix:
                 return False
         else:
             print("WARNING: The values could not be set as this row does not exist in the matrix")
+            return False
+
+    def getRowLabel(self, row):
+        return self.rowLabels[row]
+        
+    def getColLabel(self, col):
+        return self.colLabels[col]
+    
+    def getLabels(self, select):
+        if select == "row":
+            return self.rowLabels
+        elif select == "column":
+            return self.colLabels
+        else:
             return False
 
     def display(self):
@@ -171,10 +278,42 @@ class Matrix:
                     val = 0
                     for i in range(0, self.cols, 1):
                         val = val + (self.M[r][i]*other.M[i][c])
-                    finalM.setValue(r, c, val)
+                    finalM.setValue(r, c, val, True)
             return finalM
         else:
             raise ValueError("Cannot multiply these matricies")
+
+    def checkLabels(self, labels, dir):
+        ls = self.rowLabels if dir == 'row' else self.colLabels
+        result = []
+        for l in labels:
+            found = False
+            for la in ls:
+                if str(l) == str(la):
+                    found = True
+                    break
+            if not found:
+                return False
+        return True
+        
+    def getSubByLabels(self, rowLabels, colLabels):
+        final = Matrix.setDims(len(rowLabels), len(colLabels))
+        final.setRowLabels(rowLabels)
+        final.setColLabels(colLabels)
+        final.setDataType(self.valType)
+        # Check row & col labels exist in labels
+        if not self.checkLabels(rowLabels, 'row') or not self.checkLabels(colLabels, 'col'):
+            return False
+        # Compile rows
+        rows = []
+        for r in rowLabels:
+            rows = rows + [Matrix(self.getRowByLabel(r), [r], self.colLabels)]
+        # Slice rows by col ids
+        for m in rows:
+            for l in colLabels:
+                val = self.getValuebyLabels(m.rowLabels[0], l)
+                s = final.setValueByLabels(m.rowLabels[0], l, val, True)
+        return final
 
     def scale(self, scalar):
         if not self.checkDataType(scalar):
@@ -254,6 +393,11 @@ class Matrix:
                         tempR = tempR + row[0:c]
                         tempR = tempR + row[c+1:self.cols]
                         miniM = miniM + [tempR]
+                    # if (r == 0) and c == 1:    
+                    #     x = Matrix(miniM)
+                    #     x.display()
+                    #     print(x.M)
+                    #     print(x.getDeterminant())
                     if (c+r) % 2 == 0:
                         val = Matrix(miniM).getDeterminant()
                     else:
@@ -271,6 +415,36 @@ class Matrix:
             new.M[r] = list(self.M[r])
         new.valType = self.valType
         return new
+
+    def modifyRowAdd(self, row, otherRow):
+        for c in range(0, self.cols, 1):
+            self.setValue(row, c, self.getValue(row, c)+otherRow[c])
+        return True
+
+    def swapRows(self, r1, r2):
+        row1 = self.getRow(r1)
+        row2 = self.getRow(r2)
+        self.setRow(r2, row1)
+        self.setRow(r1, row2)
+        return True
+
+    def getREF(self):
+        swaps = 0
+        dup = self.duplicate()
+        start = 1
+        dup.display()
+        for c in range(0, dup.cols-1, 1):
+            row = Matrix([dup.M[start - 1]])
+            for r in range(start, dup.rows, 1):
+                currentValue = dup.getValue(r, c)
+                rowDupe = row.duplicate()
+                if c == 3:
+                    print(-(currentValue/rowDupe.M[0][c])*dup.M[r][c])
+                rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
+                dup.modifyRowAdd(r, rowDupe.M[0])
+            start = start + 1
+            dup.display()
+        return dup
 
     def getDeterminant(self):
         if self.rows != self.cols:
@@ -313,8 +487,8 @@ class Point:
         self.designation = des  # ID of the point (can be letter or number)
 
     def distance(self, other):  # Other is another point
-        tempX = mh.pow(self.x + other.x, 2)
-        tempY = mh.pow(self.y + other.y, 2)
+        tempX = mh.pow(self.x - other.x, 2)
+        tempY = mh.pow(self.y - other.y, 2)
         return mh.sqrt(tempX + tempY)
 
     def getName(self):
@@ -323,16 +497,17 @@ class Point:
     def setName(self, name):
         self.designation = name
         return True
-
+        
+    def display(self):
+        print("({0}, {1})".format(self.x, self.y))
+        return True
 
 def Test():
-    x = Matrix([[1,1], [1,2], [1,5]])
-    x.display()
-    z = Matrix([1])
-    y = Matrix([[3,1,1,7], [4,2,2,6], [9,4,1,8], [1,9,4,5]])
-    y.display()
-    y.invert()
-    #y.cofactor()
-    y.display()
+    # x = Matrix([[0.280247950437196, -0.0615670051298918, 0.08886431746235528, -0.18181818181818182, 0.0, 0.0, 0.0], [-0.0615670051298918, 0.5115670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, -0.002261777083911398, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.05, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.08660254037844388, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002], [0.0, -0.2, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
+    # x.display()
+    # x.invert()
+    # x.display()
+    x = Matrix([[-0.0615670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002],  [0.0, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
+    x.getREF().display()
 
 Test()
