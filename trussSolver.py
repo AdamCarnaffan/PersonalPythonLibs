@@ -3,6 +3,8 @@
 from personalMathLib import Matrix, Point
 import math as mh
 
+# Global Young's modulos
+E = 200000
 
 class Member:
 
@@ -11,6 +13,7 @@ class Member:
         self.a = str(targetA)
         self.b = str(targetB)
         self.id = designation
+        self.hasJoints = False
 
     def setJoints(self, joints):
         self.jointA = joints[0]
@@ -19,6 +22,7 @@ class Member:
             temp = self.jointA
             self.jointA = self.jointB
             self.jointB = temp
+        self.hasJoints = True
         return True
 
     def buildDisp(self, joints):
@@ -32,14 +36,26 @@ class Member:
     def getDOFData(self):
         dofs = []
         for dof in self.jointA.DOFs:
-            dofs = dofs + [dof]
+            dofs = dofs + [dof.duplicate()]
         for dof in self.jointB.DOFs:
-            dofs = dofs + [dof]
+            dofs = dofs + [dof.duplicate()]
         return dofs
+
+    def calculateLengthChange(self):
+        # trueA = self.jointA.applyDisp()
+        # trueB = self.jointB.applyDisp()
+        # newLength = trueA.distance(trueB)
+        # self.lengthChange = newLength - self.length
+        self.lengthChange = (self.length*1000*self.force)/(E*self.area)
+        return True
 
     def getForce(self):
         stiffnessRepresentation = Matrix([[self.cosine, self.sine, -self.cosine, -self.sine]])
         stiffnessRepresentation.scale(1/self.length)
+        # print("-->", self.id, "<--")
+        # self.dispMatrix.display()
+        # print("---")
+        # stiffnessRepresentation.display()
         result = stiffnessRepresentation * self.dispMatrix
         self.force = result.getValue(0, 0)
         return True
@@ -72,6 +88,19 @@ class Member:
         self.stiffnessMatrix = Matrix(mTempList, dofs, dofs)
         self.stiffnessMatrix.scale(1/self.length)
         return True
+        
+    def duplicate(self):
+        newM = Member(self.a, self.b, self.id)
+        if self.hasJoints: # Set both as they set together
+            newM.jointA = self.jointA.duplicate()
+            newM.jointB = self.jointB.duplicate()
+        return newM
+        
+    def pickHSS(self):
+        # Get from HSS library (json?) with params
+        self.HSSString = "123x123x123"
+        self.area = 4840
+        return True
 
 
 def checkUnique(list, value):
@@ -84,8 +113,12 @@ def checkUnique(list, value):
 class Truss:
 
     def __init__(self, jointList, memberList):
-        self.joints = jointList
-        self.members = memberList
+        self.joints = []
+        self.members = []
+        for j in jointList:
+            self.joints = self.joints + [j.duplicate()]
+        for m in memberList:
+            self.members = self.members + [m.duplicate()]
         for m in self.members:
             js = []
             for j in m.getJointTargets():
@@ -134,7 +167,7 @@ class Truss:
                         value = value + mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1])
                 self.stiffness.setValue(r, c, value, True)
                 # print(self.stiffness.M[r][c])
-        self.stiffness.display()
+        #self.stiffness.display()
         return True
 
     def calculateJointForces(self):
@@ -143,6 +176,7 @@ class Truss:
         knownDisps = []
         for d in self.DOFs:
             # print(d.disp)
+            # print(d.force)
             if d.force is None:
                 unknownDofs = unknownDofs + [d]
             else:
@@ -155,6 +189,7 @@ class Truss:
             disps = disps + [u.disp]
             dispLabels = dispLabels + [u.id]
         dispMatrix = Matrix(disps, dispLabels)
+        #dispMatrix.display()
         # Get mini stiffness matrix
         for u in unknownDofs:
             rows = rows + [u.id]
@@ -206,7 +241,7 @@ class Truss:
         result = miniM * forcesMatrix
         result.setColLabels([1])
         result.setRowLabels(miniM.colLabels)
-        result.display()
+        #result.display()
         # print(self.DOFs[0].disp)
         # Assign displacements to DOFs
         for d in self.DOFs:
@@ -219,6 +254,24 @@ class Truss:
         for m in self.members:
             print(m.id, "-->", m.force)
         return True
+
+    def getAnswerForces(self):
+        # Convert from member forces on joins to joint forces on members
+        for m in self.members:
+            m.force = m.force * -1
+        return True
+        
+    def chooseHSSs(self):
+        for m in self.members:
+            m.pickHSS()
+            m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
+        return True
+        
+    def getDeltaR(self, virtual):
+        delta = 0
+        for i in range(0, len(self.members), 1):
+            delta = delta + (self.members[i].lengthChange * virtual.members[i].force)
+        return delta
 
 
 class Joint(Point):
@@ -256,6 +309,19 @@ class Joint(Point):
             if d.id == id:
                 return d
         return False
+        
+    def duplicate(self):
+        dof = []
+        for d in self.DOFs:
+            dof = dof + [d.duplicate()]
+        newJ = Joint(Point(self.x, self.y, self.designation), dof)
+        return newJ
+        
+    def applyDisp(self):
+        newJ = self.duplicate()
+        newJ.x = self.x + self.DOFs[0].disp
+        newJ.y = self.y + self.DOFs[1].disp
+        return newJ
 
 
 class DOF:
@@ -273,10 +339,17 @@ class DOF:
     def setDisp(self, val):
         self.disp = val
         return True
+        
+    def duplicate(self):
+        dup = DOF(self.id)
+        dup.force = self.force
+        dup.disp = self.disp
+        return dup
 
 
 def main():
-    points = [Point(2.31, 4), Point(2.31, 0), Point(4.62, 0), Point(0, 0)]
+    height = mh.sqrt(18.75)
+    points = [Point(0,0), Point(2.5, height), Point(5,0), Point(7.5, height), Point(10,0)]
     # Set designations for undesignated points
     i = 0
     for p in points:
@@ -289,9 +362,11 @@ def main():
     for p in points:
         joints = joints + [Joint(p, [i*2-1, i*2])]
         i = i + 1
-    members = [Member(4, 1, 1), Member(1, 2, 2), Member(1, 3, 3), Member(4, 2, 4), Member(2, 3, 5)]
-    restrict = [[4, 'xy'], [3, 'y']]  # Disp is set 0
-    force = [[2, 'y', -10], [1, 'xy'], [2, 'x'], [3, 'x']]  # Forces are set (Default val is 0 when not specified)
+    members = [Member(1,2,1), Member(1,3,2), Member(2,3,3), Member(2,4,4), Member(3,4,5), Member(3,5,6), Member(4,5,7)]
+    restrict = [[1, 'xy'], [5, 'y']]  # Disp is set 0
+    force = [[2, 'xy'], [3, 'x'], [3, 'y', -20], [4, 'xy'], [5, 'x']]  # Forces are set (Default val is 0 when not specified)
+    pointOfDeflection = 3
+    deflectionSpan = [1,5] # Members from and to
     truss = Truss(joints, members)
     for r in restrict:
         truss.fetchJoint(r[0]).setDisp(r[1], 0)
@@ -301,8 +376,31 @@ def main():
     truss.calculateDisplacements()
     truss.calculateJointForces()
     truss.calculateMemberForces()
-    print(truss.joints[0].getDOF(2).force)
+    #print(truss.joints[0].getDOF(2).force)
+    truss.getAnswerForces()
     truss.display()
+    truss.chooseHSSs()
+    # Calculate Virtual Work
+    virtualTruss = Truss(joints, members)
+    for r in restrict:
+        virtualTruss.fetchJoint(r[0]).setDisp(r[1], 0)
+    for f in force:
+        val = 0 if len(f) == 2 else f[2]
+        if val != 0:
+            if f[0] != pointOfDeflection:
+                val = 0
+            else:
+                val = 1
+        virtualTruss.fetchJoint(f[0]).setForce(f[1], val)
+    # for j in virtualTruss.joints:
+    #     print(j.DOFs[0].disp)
+    virtualTruss.calculateDisplacements()
+    virtualTruss.calculateJointForces()
+    virtualTruss.calculateMemberForces()
+    #print(truss.joints[0].getDOF(2).force)
+    virtualTruss.getAnswerForces()
+    #virtualTruss.display()
+    print(abs(truss.getDeltaR(virtualTruss))/(1000*(points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
     return True
 
 main()

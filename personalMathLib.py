@@ -30,7 +30,6 @@ class Matrix:
                     self.cols = 1
                     continue
                 else:
-                    print("hey")
                     raise ValueError("The data in a matrix must be numeric")
             elif len(row) < self.cols or self.cols == 0:
                 self.cols = len(row)
@@ -86,10 +85,10 @@ class Matrix:
     def setColLabels(self, colLabels):
         i = 0
         for label in colLabels:
-            self.colLabels[i] = label
-            i = i + 1
             if i >= self.cols:
                 break
+            self.colLabels[i] = label
+            i = i + 1
         return True
 
     def getRowByLabel(self, rowL):
@@ -434,11 +433,16 @@ class Matrix:
     def getREF(self):
         dup = self.duplicate()
         start = 1
+        swaps = 0
         for c in range(0, dup.cols-1, 1):
+            i = 0
             while True:
                 if dup.M[start - 1][c] == 0:
-                    print("AGH")
-                break
+                    dup.swapRows(start-1, start + i)
+                    swaps = swaps + 1
+                    i = i + 1
+                else:
+                    break
             row = Matrix([dup.M[start - 1]])
             for r in range(start, dup.rows, 1):
                 currentValue = dup.getValue(r, c)
@@ -446,6 +450,7 @@ class Matrix:
                 rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
                 dup.modifyRowAdd(r, rowDupe.M[0])
             start = start + 1
+        dup.swaps = swaps
         return dup
 
     def getDeterminant(self):
@@ -459,6 +464,8 @@ class Matrix:
             det = 1
             for r in range(0, ref.rows, 1):
                 det = det * ref.getValue(r, r)
+            if ref.swaps % 2 != 0:
+                det = det * -1
             return det
             # targetRows = self.M[1:self.rows]
             # det = 0
@@ -512,7 +519,6 @@ class Point:
 
 def Test():
     x = Matrix([[0.280247950437196, -0.0615670051298918, 0.08886431746235528, -0.18181818181818182, 0.0, 0.0, 0.0], [-0.0615670051298918, 0.5115670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, -0.002261777083911398, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.05, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.08660254037844388, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002], [0.0, -0.2, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
-    x.display()
     x.invert()
     x.display()
 
