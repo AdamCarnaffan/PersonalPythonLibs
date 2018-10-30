@@ -17,12 +17,12 @@ class Matrix:
         self.rows = len(inList)
         self.cols = 0
         self.valType = int  # Default expected datatype
-        
+
         # Process and create the matrix construct
         self.M = []
         self.rowLabels = []
         self.colLabels = []
-        
+
         # Scan list for expected col length
         for row in inList:
             if type(row) != list:
@@ -39,16 +39,20 @@ class Matrix:
             self.M = self.M + [[]]  # Defines a new row
             self.rowLabels = self.rowLabels + [""]  # Add a new row label for the row
             for c in range(0, self.cols, 1):
-                if c == 0:
+                if r == 0:
                     self.colLabels = self.colLabels + [""]  # Add a new col label for the column
                 self.M[r] = self.M[r] + [0]
         # Add labels in rows and columns starting from left/top going to last available
         i = 0
         for label in rowLabels:
+            if i >= self.rows:
+                break
             self.rowLabels[i] = label
             i = i + 1
         i = 0
         for label in colLabels:
+            if i >= self.cols:
+                break
             self.colLabels[i] = label
             i = i + 1
         # Type the empty matrix properly
@@ -69,7 +73,7 @@ class Matrix:
                         raise ValueError("The data in a matrix must be numeric")
                     tempCInd = tempCInd + 1
                 tempRInd = tempRInd + 1
-        
+
     def setRowLabels(self, rowLabels):
         i = 0
         for label in rowLabels:
@@ -78,7 +82,7 @@ class Matrix:
             if i >= self.rows:
                 break
         return True
-        
+
     def setColLabels(self, colLabels):
         i = 0
         for label in colLabels:
@@ -87,7 +91,7 @@ class Matrix:
             if i >= self.cols:
                 break
         return True
-    
+
     def getRowByLabel(self, rowL):
         i = 0
         for r in self.rowLabels:
@@ -95,7 +99,7 @@ class Matrix:
                 return self.M[i]
             i = i + 1
         return False
-            
+
     def getIndexByLabel(self, label, dir):
         ls = self.rowLabels if dir == 'row' else self.colLabels
         i = 0
@@ -104,7 +108,7 @@ class Matrix:
                 return i
             i = i + 1
         return False
-                
+
     def getValuebyLabels(self, rowL, colL):
         foundR = False
         val = 0
@@ -133,7 +137,6 @@ class Matrix:
         try:
             #print(val)
             temp = float(val)
-            
             # Check if float is required
             if temp != int(val):
                 #print("hey")
@@ -230,10 +233,10 @@ class Matrix:
 
     def getRowLabel(self, row):
         return self.rowLabels[row]
-        
+
     def getColLabel(self, col):
         return self.colLabels[col]
-    
+
     def getLabels(self, select):
         if select == "row":
             return self.rowLabels
@@ -246,7 +249,7 @@ class Matrix:
         printStr = ""
         for row in self.M:
             for val in row:
-                printStr = printStr + format(val, '.4g') + " " # Had to look up the g vs f from what we've seen :(
+                printStr = printStr + format(val, '.8g') + " " # Had to look up the g vs f from what we've seen :(
             printStr = printStr + "\n"
         print(printStr)
         return True
@@ -295,7 +298,7 @@ class Matrix:
             if not found:
                 return False
         return True
-        
+
     def getSubByLabels(self, rowLabels, colLabels):
         final = Matrix.setDims(len(rowLabels), len(colLabels))
         final.setRowLabels(rowLabels)
@@ -393,7 +396,7 @@ class Matrix:
                         tempR = tempR + row[0:c]
                         tempR = tempR + row[c+1:self.cols]
                         miniM = miniM + [tempR]
-                    # if (r == 0) and c == 1:    
+                    # if (r == 0) and c == 1:
                     #     x = Matrix(miniM)
                     #     x.display()
                     #     print(x.M)
@@ -429,21 +432,20 @@ class Matrix:
         return True
 
     def getREF(self):
-        swaps = 0
         dup = self.duplicate()
         start = 1
-        dup.display()
         for c in range(0, dup.cols-1, 1):
+            while True:
+                if dup.M[start - 1][c] == 0:
+                    print("AGH")
+                break
             row = Matrix([dup.M[start - 1]])
             for r in range(start, dup.rows, 1):
                 currentValue = dup.getValue(r, c)
                 rowDupe = row.duplicate()
-                if c == 3:
-                    print(-(currentValue/rowDupe.M[0][c])*dup.M[r][c])
                 rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
                 dup.modifyRowAdd(r, rowDupe.M[0])
             start = start + 1
-            dup.display()
         return dup
 
     def getDeterminant(self):
@@ -453,24 +455,29 @@ class Matrix:
         if self.rows == 2:
             return self.M[0][0]*self.M[1][1] - self.M[0][1]*self.M[1][0]
         else:
-            targetRows = self.M[1:self.rows]
-            det = 0
-            for i in range(0, self.cols, 1):
-                # Generate mini target list
-                miniM = []
-                # Remove the column that is related to the current column
-                for row in targetRows:
-                    tempR = []
-                    tempR = tempR + row[0:i]
-                    tempR = tempR + row[i+1:self.cols]
-                    miniM = miniM + [tempR]
-                # Get determinant using mini lists
-                tempDet = self.M[0][i]*Matrix(miniM).getDeterminant()
-                if i % 2 == 0:
-                    det = det + tempDet
-                else:
-                    det = det - tempDet
+            ref = self.getREF()
+            det = 1
+            for r in range(0, ref.rows, 1):
+                det = det * ref.getValue(r, r)
             return det
+            # targetRows = self.M[1:self.rows]
+            # det = 0
+            # for i in range(0, self.cols, 1):
+            #     # Generate mini target list
+            #     miniM = []
+            #     # Remove the column that is related to the current column
+            #     for row in targetRows:
+            #         tempR = []
+            #         tempR = tempR + row[0:i]
+            #         tempR = tempR + row[i+1:self.cols]
+            #         miniM = miniM + [tempR]
+            #     # Get determinant using mini lists
+            #     tempDet = self.M[0][i]*Matrix(miniM).getDeterminant()
+            #     if i % 2 == 0:
+            #         det = det + tempDet
+            #     else:
+            #         det = det - tempDet
+            # return det
 
 
 class Vector:
@@ -481,7 +488,7 @@ class Vector:
 
 class Point:
 
-    def __init__(self, x, y, des = ""):
+    def __init__(self, x, y, des=""):
         self.x = x
         self.y = y
         self.designation = des  # ID of the point (can be letter or number)
@@ -497,17 +504,16 @@ class Point:
     def setName(self, name):
         self.designation = name
         return True
-        
+
     def display(self):
         print("({0}, {1})".format(self.x, self.y))
         return True
 
-def Test():
-    # x = Matrix([[0.280247950437196, -0.0615670051298918, 0.08886431746235528, -0.18181818181818182, 0.0, 0.0, 0.0], [-0.0615670051298918, 0.5115670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, -0.002261777083911398, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.05, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.08660254037844388, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002], [0.0, -0.2, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
-    # x.display()
-    # x.invert()
-    # x.display()
-    x = Matrix([[-0.0615670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002],  [0.0, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
-    x.getREF().display()
 
-Test()
+def Test():
+    x = Matrix([[0.280247950437196, -0.0615670051298918, 0.08886431746235528, -0.18181818181818182, 0.0, 0.0, 0.0], [-0.0615670051298918, 0.5115670051298918, -0.002261777083911398, -0.05, -0.08660254037844388, -0.2, 0.0], [0.08886431746235528, -0.002261777083911398, 0.278264594020608, -0.08660254037844388, -0.15000000000000002, 0.0, 0.0], [-0.18181818181818182, -0.05, -0.08660254037844388, 0.2818181818181818, 0.0, -0.05, 0.08660254037844388], [0.0, -0.08660254037844388, -0.15000000000000002, 0.0, 0.30000000000000004, 0.08660254037844388, -0.15000000000000002], [0.0, -0.2, 0.0, -0.05, 0.08660254037844388, 0.25, -0.08660254037844388], [0.0, 0.0, 0.0, 0.08660254037844388, -0.15000000000000002, -0.08660254037844388, 0.15000000000000002]])
+    x.display()
+    x.invert()
+    x.display()
+
+#Test()

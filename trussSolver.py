@@ -22,7 +22,7 @@ class Member:
         return True
 
     def buildDisp(self, joints):
-        self.setJoints(joints) # Reset joints to include proper forces
+        self.setJoints(joints)  # Reset joints to include proper forces
         self.dispMatrix = Matrix.setDims(4, 1)
         self.dispMatrix.setRowLabels(self.getDOFs())
         for dof in self.getDOFData():
@@ -73,11 +73,13 @@ class Member:
         self.stiffnessMatrix.scale(1/self.length)
         return True
 
+
 def checkUnique(list, value):
     for val in list:
         if value == val:
             return False
     return True
+
 
 class Truss:
 
@@ -89,10 +91,10 @@ class Truss:
             for j in m.getJointTargets():
                 js = js + [self.fetchJoint(j)]
             for j in js:
-                if j == False:
+                if not j:
                     raise ValueError("Yo this doesn't work")
             m.setJoints(js)  # Sets the joints into the Member
-            m.calculate() # Calculates the relevant dimensions for member matricies
+            m.calculate()  # Calculates the relevant dimensions for member matricies
             # m.stiffnessMatrix.display()
         self.compileStiffnesses()
 
@@ -102,14 +104,14 @@ class Truss:
             if j.getName() == des:
                 return j
         return False
-        
+
     def compileDofs(self):
         self.DOFs = []
         for j in self.joints:
             for d in j.DOFs:
                 self.DOFs = self.DOFs + [d]
         return True
-        
+
     def compileStiffnesses(self):
         uniqueDofs = []
         for ma in self.members:
@@ -132,24 +134,20 @@ class Truss:
                         value = value + mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1])
                 self.stiffness.setValue(r, c, value, True)
                 # print(self.stiffness.M[r][c])
+        self.stiffness.display()
         return True
-        
+
     def calculateJointForces(self):
         # Build matrix with dofs of unknown forces
         unknownDofs = []
         knownDisps = []
         for d in self.DOFs:
-            # print(d.force)
             # print(d.disp)
-            print(d.force)
-            if d.force == None:
+            if d.force is None:
                 unknownDofs = unknownDofs + [d]
             else:
                 knownDisps = knownDisps + [d]
         rows = []
-        for u in unknownDofs:
-            rows = rows + [u.id]
-        miniM = self.stiffness.getSubByLabels(rows, rows)
         # Build known displacements matrix
         disps = []
         dispLabels = []
@@ -157,9 +155,14 @@ class Truss:
             disps = disps + [u.disp]
             dispLabels = dispLabels + [u.id]
         dispMatrix = Matrix(disps, dispLabels)
+        # Get mini stiffness matrix
+        for u in unknownDofs:
+            rows = rows + [u.id]
+        miniM = self.stiffness.getSubByLabels(rows, dispMatrix.rowLabels)
         # miniM.display()
         # print("----")
         # print("s")
+        # miniM.display()
         # dispMatrix.display()
         # print("s")
         # Calculate forces
@@ -172,7 +175,7 @@ class Truss:
                 if d.id == m:
                     d.setForce(forces.getValuebyLabels(d.id, 1))
         return True
-        
+
     def calculateMemberForces(self):
         for m in self.members:
             js = []
@@ -181,7 +184,7 @@ class Truss:
             m.buildDisp(js)
             m.getForce()
         return True
-        
+
     def calculateDisplacements(self):
         self.compileDofs()
         # Build matrix with dofs of unknown displacement
@@ -198,10 +201,7 @@ class Truss:
             forces = forces + [[u.force]]
         forcesMatrix = Matrix(forces, rows, rows)
         miniM = self.stiffness.getSubByLabels(rows, rows)
-        miniM.display()
-        print(miniM.M)
         miniM.invert()
-        miniM.display()
         # Solved joints
         result = miniM * forcesMatrix
         result.setColLabels([1])
@@ -214,19 +214,19 @@ class Truss:
                 if d.id == m:
                     d.setDisp(result.getValuebyLabels(d.id, 1))
         return True
-        
+
     def display(self):
         for m in self.members:
             print(m.id, "-->", m.force)
         return True
-        
+
 
 class Joint(Point):
 
     def __init__(self, point, DOFids):
         super(Joint, self).__init__(point.x, point.y, point.designation)
-        self.DOFs = [DOF(DOFids[0]), DOF(DOFids[1])] # 0 is x, 1 is y
-    
+        self.DOFs = [DOF(DOFids[0]), DOF(DOFids[1])]  # 0 is x, 1 is y
+
     def setForce(self, dof, val):
         if dof == 'x':
             self.DOFs[0].setForce(val)
@@ -238,7 +238,7 @@ class Joint(Point):
         else:
             return False
         return True
-        
+
     def setDisp(self, dof, val):
         if dof == 'x':
             self.DOFs[0].setDisp(val)
@@ -250,32 +250,33 @@ class Joint(Point):
         else:
             return False
         return True
-        
+
     def getDOF(self, id):
         for d in self.DOFs:
             if d.id == id:
                 return d
         return False
-        
-        
+
+
 class DOF:
-    
+
     def __init__(self, id):
         self.id = id
         # Nones indicate variable
         self.force = None
         self.disp = None
-        
+
     def setForce(self, val):
         self.force = val
         return True
-        
+
     def setDisp(self, val):
         self.disp = val
         return True
 
+
 def main():
-    points = [Point(0, 0), Point(2, mh.sqrt(18.75)), Point(5, 0), Point(7.5, mh.sqrt(18.75)), Point(10, 0)]
+    points = [Point(2.31, 4), Point(2.31, 0), Point(4.62, 0), Point(0, 0)]
     # Set designations for undesignated points
     i = 0
     for p in points:
@@ -288,9 +289,9 @@ def main():
     for p in points:
         joints = joints + [Joint(p, [i*2-1, i*2])]
         i = i + 1
-    members = [Member(1, 2, 1), Member(1, 3, 2), Member(2, 3, 3), Member(2, 4, 4), Member(3, 4, 5), Member(3, 5, 6), Member(4, 5, 7)]
-    restrict = [[1, 'xy'], [2, 'y']] # Disp is set 0
-    force = [[3, 'x', -20], [2, 'x'], [3, 'y'], [4, 'xy'], [5, 'xy']] # Forces are set (Default val is 0 when not specified)
+    members = [Member(4, 1, 1), Member(1, 2, 2), Member(1, 3, 3), Member(4, 2, 4), Member(2, 3, 5)]
+    restrict = [[4, 'xy'], [3, 'y']]  # Disp is set 0
+    force = [[2, 'y', -10], [1, 'xy'], [2, 'x'], [3, 'x']]  # Forces are set (Default val is 0 when not specified)
     truss = Truss(joints, members)
     for r in restrict:
         truss.fetchJoint(r[0]).setDisp(r[1], 0)
