@@ -88,14 +88,14 @@ class Member:
         self.stiffnessMatrix = Matrix(mTempList, dofs, dofs)
         self.stiffnessMatrix.scale(1/self.length)
         return True
-        
+
     def duplicate(self):
         newM = Member(self.a, self.b, self.id)
         if self.hasJoints: # Set both as they set together
             newM.jointA = self.jointA.duplicate()
             newM.jointB = self.jointB.duplicate()
         return newM
-        
+
     def pickHSS(self):
         # Get from HSS library (json?) with params
         self.HSSString = "123x123x123"
@@ -163,11 +163,13 @@ class Truss:
                 value = 0
                 for m in self.members:
                     mDis = m.stiffnessMatrix
+                    print("---")
+                    mDis.display()
                     if not mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1]) == False:
                         value = value + mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1])
                 self.stiffness.setValue(r, c, value, True)
                 # print(self.stiffness.M[r][c])
-        #self.stiffness.display()
+        # self.stiffness.display()
         return True
 
     def calculateJointForces(self):
@@ -260,13 +262,13 @@ class Truss:
         for m in self.members:
             m.force = m.force * -1
         return True
-        
+
     def chooseHSSs(self):
         for m in self.members:
             m.pickHSS()
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
         return True
-        
+
     def getDeltaR(self, virtual):
         delta = 0
         for i in range(0, len(self.members), 1):
@@ -309,14 +311,14 @@ class Joint(Point):
             if d.id == id:
                 return d
         return False
-        
+
     def duplicate(self):
         dof = []
         for d in self.DOFs:
             dof = dof + [d.duplicate()]
         newJ = Joint(Point(self.x, self.y, self.designation), dof)
         return newJ
-        
+
     def applyDisp(self):
         newJ = self.duplicate()
         newJ.x = self.x + self.DOFs[0].disp
@@ -339,7 +341,7 @@ class DOF:
     def setDisp(self, val):
         self.disp = val
         return True
-        
+
     def duplicate(self):
         dup = DOF(self.id)
         dup.force = self.force
@@ -379,6 +381,13 @@ def main():
     #print(truss.joints[0].getDOF(2).force)
     truss.getAnswerForces()
     truss.display()
+    # Build list of HSSs
+    #HSSFile = open('fixedData\\HSSData.txt', 'r')
+    # HSSData = HSSFile.readlines()
+    # HSSs = []
+    # for line in HSSData:
+    #     print(line)
+    #     HSSs = HSSs + [line]
     truss.chooseHSSs()
     # Calculate Virtual Work
     virtualTruss = Truss(joints, members)
