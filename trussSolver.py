@@ -132,7 +132,7 @@ class Truss:
         self.compileStiffnesses()
 
     def fetchJoint(self, desi):
-        des = str(desi)
+        des = str(int(round(float(desi))))
         for j in self.joints:
             if j.getName() == des:
                 return j
@@ -163,8 +163,6 @@ class Truss:
                 value = 0
                 for m in self.members:
                     mDis = m.stiffnessMatrix
-                    print("---")
-                    mDis.display()
                     if not mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1]) == False:
                         value = value + mDis.getValuebyLabels(selectedLabels[0], selectedLabels[1])
                 self.stiffness.setValue(r, c, value, True)
@@ -348,10 +346,115 @@ class DOF:
         dup.disp = self.disp
         return dup
 
+class Variable:
+    
+    def __init__(self, varName, value):
+        self.name = varName
+        self.val = float(value)
+        
+
+def interpVar(value, variables):
+    val = None
+    try:
+        val = float(value)
+        if val == int(value):
+            val = int(value)
+    except:
+        for var in variables:
+            if value == var.name:
+                val = var.val
+                break
+        if val is None:
+            return value # A string
+    return val
+
+def subtract(oldStr, sub):
+    if sub == 'xy' or oldStr == '':
+        return ''
+    elif sub == 'x':
+        if oldStr == 'x':
+            return ''
+        else:
+            return 'y'
+    elif sub == 'y':
+        if oldStr == 'y':
+            return ''
+        else:
+            return 'x'
+    else:
+        return 'xy'
 
 def main():
-    height = mh.sqrt(18.75)
-    points = [Point(0,0), Point(2.5, height), Point(5,0), Point(7.5, height), Point(10,0)]
+    inp = open("inputs.txt", 'r')
+    data = inp.readlines()
+    mode = 0
+    # Set Truss Defaults
+    vars = []
+    points = []
+    members = []
+    memberIndex = 0
+    restrict = []
+    force = []
+    pointOfDeflection = 0
+    deflectionSpan = []
+    d = 0
+    for l in data:
+        data[d] = l.split("\n")[0]
+        d = d + 1
+    for line in data:
+        # Detect comments
+        if line[0] == '#':
+            continue
+        # Detect new mode
+        if line == "Variables":
+            mode = 1
+        elif line == "Points":
+            mode = 2
+        elif line == "Members":
+            mode = 3
+        elif line == "Restraints":
+            mode = 4
+        elif line == "Forces":
+            mode = 5
+        elif line == "Point of Deflection":
+            mode = 6
+        elif line == "Span of Deflection":
+            mode = 7
+        else: # If no mode, 
+            cur = line.split(" ")
+            if mode != 1:
+                dataVals = []
+                for l in cur:
+                    dataVals = dataVals + [interpVar(l, vars)]
+            # Action based on mode
+            if mode == 1:
+                vars = vars + [Variable(cur[0], cur[1])]
+            elif mode == 2:
+                points = points + [Point(dataVals[0], dataVals[1])]
+            elif mode == 3:
+                memberIndex = memberIndex + 1
+                members = members + [Member(dataVals[0], dataVals[1], memberIndex)]
+            elif mode == 4:
+                restrict = restrict + [[dataVals[0], dataVals[1]]]
+            elif mode == 5:
+                force = force + [[dataVals[0], dataVals[1], dataVals[2]]]
+            elif mode == 6:
+                pointOfDeflection = dataVals[0]
+            elif mode == 7:
+                deflectionSpan = [dataVals[0], dataVals[1]]
+    # Generate all other dofs as points of 0 force
+    sets = restrict + force
+    for u in range(1, len(points) + 1, 1):
+        offsetStr = ''
+        for r in sets:
+            if r[0] == u:
+                offsetStr = offsetStr + r[1]
+        if offsetStr == 'yx':
+            offsetStr = 'xy'
+        finalStr = subtract('xy', offsetStr)
+        if finalStr != '':
+            force = force + [[u, finalStr]]
+    #points = [Point(0,0), Point(2.75, h), Point()]
     # Set designations for undesignated points
     i = 0
     for p in points:
@@ -364,11 +467,11 @@ def main():
     for p in points:
         joints = joints + [Joint(p, [i*2-1, i*2])]
         i = i + 1
-    members = [Member(1,2,1), Member(1,3,2), Member(2,3,3), Member(2,4,4), Member(3,4,5), Member(3,5,6), Member(4,5,7)]
-    restrict = [[1, 'xy'], [5, 'y']]  # Disp is set 0
-    force = [[2, 'xy'], [3, 'x'], [3, 'y', -20], [4, 'xy'], [5, 'x']]  # Forces are set (Default val is 0 when not specified)
-    pointOfDeflection = 3
-    deflectionSpan = [1,5] # Members from and to
+    #members = [Member(1,2,1), Member(1,3,2), Member(2,3,3), Member(2,4,4), Member(3,4,5), Member(3,5,6), Member(4,5,7)]
+    #restrict = [[1, 'xy'], [5, 'y']]  # Disp is set 0
+    #force = [[2, 'xy'], [3, 'x'], [3, 'y', -20], [4, 'xy'], [5, 'x']]  # Forces are set (Default val is 0 when not specified)
+    #pointOfDeflection = 3
+    # deflectionSpan = [1,5] # Members from and to
     truss = Truss(joints, members)
     for r in restrict:
         truss.fetchJoint(r[0]).setDisp(r[1], 0)
@@ -382,12 +485,12 @@ def main():
     truss.getAnswerForces()
     truss.display()
     # Build list of HSSs
-    #HSSFile = open('fixedData\\HSSData.txt', 'r')
-    # HSSData = HSSFile.readlines()
-    # HSSs = []
-    # for line in HSSData:
-    #     print(line)
-    #     HSSs = HSSs + [line]
+    HSSFile = open('fixedData\\HSSData.txt', 'r')
+    HSSData = HSSFile.readlines()
+    HSSs = []
+    for line in HSSData:
+        print(line)
+        HSSs = HSSs + [line]
     truss.chooseHSSs()
     # Calculate Virtual Work
     virtualTruss = Truss(joints, members)
