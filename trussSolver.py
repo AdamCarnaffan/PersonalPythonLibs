@@ -2,7 +2,6 @@
 
 from personalMathLib import Matrix, Point
 from civLib import *
-import math as mh
 
 def main():
     # Read HSSs into a selection array
@@ -41,7 +40,7 @@ def main():
             mode = 6
         elif line == "Span of Deflection":
             mode = 7
-        else: # If no mode, 
+        else: # If no mode,
             cur = line.split(" ")
             if mode != 1:
                 dataVals = []
