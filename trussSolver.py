@@ -111,7 +111,7 @@ def main():
     HSSs = []
     for line in HSSData:
         HSSs = HSSs + [HSS(line)]
-    truss.chooseHSSs(truss.selectSpan('lower'), truss.selectSpan('upper'))
+    truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
     # Calculate Virtual Work
     virtualTruss = Truss(joints, members)
     for r in restrict:

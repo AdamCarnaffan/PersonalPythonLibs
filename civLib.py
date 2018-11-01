@@ -118,10 +118,13 @@ class Member:
         return newM
 
     def pickHSS(self, HSSs, minForce=None):
-        # If force none then use own force
-        # Get from HSS library (json?) with params
+        #HSSs is a list of all HSS objects
         self.HSSString = "123x123x123"
         self.area = 4840
+        self.safeYield = 
+        self.safeBuckle = 
+        # Incorporate the structure of the member
+        self.structure = selectedHSS
         return True
 
 
@@ -288,7 +291,7 @@ class Truss:
         hori = []
         heights = []
         ext = None
-        for l in self.members:
+        for m in self.members:
             if m.isHorizontal:
                 hori = hori + [m]
                 heights = heights + [m.height]
@@ -347,7 +350,7 @@ class Truss:
                 continue
             for id in topChordIds:
                 if m.id == id:
-                    m.pickHSS(HSSList, TopForce)
+                    m.pickHSS(HSSList, topForce)
                     set = True
                     break
             if set:
