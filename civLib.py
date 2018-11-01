@@ -117,7 +117,8 @@ class Member:
             newM.jointB = self.jointB.duplicate()
         return newM
 
-    def pickHSS(self):
+    def pickHSS(self, HSSs, minForce=None):
+        # If force none then use own force
         # Get from HSS library (json?) with params
         self.HSSString = "123x123x123"
         self.area = 4840
@@ -310,7 +311,7 @@ class Truss:
                 membersList = membersList + [l.id]
         return membersList
 
-    def chooseHSSs(self, bottomChordIds, topChordIds):
+    def chooseHSSs(self, HSSList, bottomChordIds, topChordIds):
         topForce = 0
         botForce = 0
         webForce = 0
@@ -321,6 +322,7 @@ class Truss:
                     if botForce < abs(m.force):
                         botForce = abs(m.force)
                     placed = True
+                    break
             if placed:
                 continue
             for id in topChordIds:
@@ -328,11 +330,30 @@ class Truss:
                     if topForce < abs(m.force):
                         topForce = abs(m.force)
                     placed = True
+                    break
             if placed:
                 continue
             if webForce < abs(m.force):
                 webForce = abs(m.force)
         # Set top, bottom and web HSSs
+        for m in self.members:
+            set = False
+            for id in bottomChordIds:
+                if m.id == id:
+                    m.pickHSS(HSSList, botForce)
+                    set = True
+                    break
+            if set:
+                continue
+            for id in topChordIds:
+                if m.id == id:
+                    m.pickHSS(HSSList, TopForce)
+                    set = True
+                    break
+            if set:
+                continue
+            #Selects HSS for the web forces
+            m.pickHSS(HSSList, webForce)
         for m in self.members:
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
         return True
