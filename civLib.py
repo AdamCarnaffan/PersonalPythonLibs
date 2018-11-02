@@ -16,7 +16,12 @@ class HSS:
         self.mass = float(vals[2])
         self.deadLoad = float(vals[3])
         self.area = float(vals[4])
-        self.intertia = float(vals[5])
+        self.inertia = float(vals[5])
+        self.s = float(vals[6])
+        self.slenderness = float(vals[7])
+        self.dims = []
+        for v in self.designation.split('x'):
+            self.dims = self.dims + [float(v)] # dims[0] == dims[1]
         # Add more data when added to txt
 
     def getDes(self):
@@ -36,6 +41,7 @@ class Member:
         self.id = designation
         self.hasJoints = False
         self.answerForm = False
+        self.structureIteration = 0
 
     def setJoints(self, joints):
         self.jointA = joints[0]
@@ -70,7 +76,7 @@ class Member:
         # trueB = self.jointB.applyDisp()
         # newLength = trueA.distance(trueB)
         # self.lengthChange = newLength - self.length
-        self.lengthChange = (self.length*1000*self.force)/(E*self.area)
+        self.lengthChange = (self.length*1000*self.force)/(E*self.structure.area)
         return True
 
     def getForce(self):
@@ -127,20 +133,50 @@ class Member:
         # HSSs is a list of all HSS objects
         crushStress = 350
         tensileStress = 350
+        lowestI = 0
+        lowestA = 0
         if minForce is None:
             minForce = self.force
         if maxLength is None:
             maxLength = self.length
         if minForce < 0:
             lowestA = abs((2*minForce)/crushStress)
-            lowestI = abs((3*minForce*maxLength*maxLength)/(mh.pi()*mh.pi()*E))
+            lowestI = abs((3*minForce*maxLength*maxLength)/(mh.pi*mh.pi*E))
         else:
             lowestA = (2*minForce)/tensileStress
-            lowestI = 0  # IDK HOW TO FIND THIS
+        slenderness = maxLength*10/2
         # find HSS
-
+        possible = []
+        for h in HSSs:
+            if h.area >= lowestA and h.inertia >= lowestI:
+                if minForce >= 0:
+                    if h.slenderness < slenderness:
+                        continue
+                possible = possible + [h]
+        it = 0
+        order = []
+        while len(order) <= self.structureIteration:
+            currentLowest = None
+            reduced = []
+            for p in possible:
+                if currentLowest is None or p.dims[0] < currentLowest:
+                    currentLowest = p.dims[0]
+                    reduced = reduced[len(reduced)-(1+it):len(reduced)-1] + [p]
+                elif p.dims[0] == currentLowest:
+                    reduced = reduced + [p]
+            order = []
+            finalLow = None
+            #print(reduced)
+            for p in reduced:
+                if finalLow is None or p.dims[2] < finalLow:
+                    finalLow = p.dims[2]
+                    order = order + [p]
+            it = it + 1
         # Incorporate the structure of the member
-        self.structure = selectedHSS
+        #print(order)
+        #print(len(order)-(1+self.structureIteration))
+        self.structure = order[len(order) - (1+self.structureIteration)]
+        self.structureIteration = self.structureIteration + 1
         return True
 
 
@@ -369,7 +405,7 @@ class Truss:
             if webLength < m.length:
                 webLength = m.length
         # Get force signs
-        if
+        #if
         # Set top, bottom and web HSSs
         for m in self.members:
             set = False
