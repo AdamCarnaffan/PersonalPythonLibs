@@ -6,8 +6,9 @@ import math as mh
 # Global Young's modulos
 E = 200000
 
+
 class HSS:
-    
+
     def __init__(self, inputLine):
         vals = inputLine.split(' ')
         self.designation = vals[0]
@@ -17,13 +18,14 @@ class HSS:
         self.area = float(vals[4])
         self.intertia = float(vals[5])
         # Add more data when added to txt
-    
+
     def getDes(self):
         return self.designation
-        
+
     def checkAcceptable(self, area, intertia):
         # Check area and intertia
         pass
+
 
 class Member:
 
@@ -33,6 +35,7 @@ class Member:
         self.b = str(targetB)
         self.id = designation
         self.hasJoints = False
+        self.answerForm = False
 
     def setJoints(self, joints):
         self.jointA = joints[0]
@@ -112,17 +115,30 @@ class Member:
 
     def duplicate(self):
         newM = Member(self.a, self.b, self.id)
-        if self.hasJoints: # Set both as they set together
+        if self.hasJoints:  # Set both as they set together
             newM.jointA = self.jointA.duplicate()
             newM.jointB = self.jointB.duplicate()
         return newM
 
-    def pickHSS(self, HSSs, minForce=None):
-        #HSSs is a list of all HSS objects
-        self.HSSString = "123x123x123"
-        self.area = 4840
-        self.safeYield = 
-        self.safeBuckle = 
+    def pickHSS(self, HSSs, minForce=None, maxLength=None):
+        if self.answerForm is False:
+            self.force = self.force * (-1)
+            self.answerForm = True
+        # HSSs is a list of all HSS objects
+        crushStress = 350
+        tensileStress = 350
+        if minForce is None:
+            minForce = self.force
+        if maxLength is None:
+            maxLength = self.length
+        if minForce < 0:
+            lowestA = abs((2*minForce)/crushStress)
+            lowestI = abs((3*minForce*maxLength*maxLength)/(mh.pi()*mh.pi()*E))
+        else:
+            lowestA = (2*minForce)/tensileStress
+            lowestI = 0  # IDK HOW TO FIND THIS
+        # find HSS
+
         # Incorporate the structure of the member
         self.structure = selectedHSS
         return True
@@ -155,6 +171,7 @@ class Truss:
             m.calculate()  # Calculates the relevant dimensions for member matricies
             # m.stiffnessMatrix.display()
         self.compileStiffnesses()
+        self.forcesCalced = False
 
     def fetchJoint(self, desi):
         des = str(int(round(float(desi))))
@@ -214,7 +231,7 @@ class Truss:
             disps = disps + [u.disp]
             dispLabels = dispLabels + [u.id]
         dispMatrix = Matrix(disps, dispLabels)
-        #dispMatrix.display()
+        # dispMatrix.display()
         # Get mini stiffness matrix
         for u in unknownDofs:
             rows = rows + [u.id]
@@ -252,7 +269,7 @@ class Truss:
         for d in self.DOFs:
             # print(d.force)
             # print(d.disp)
-            if d.disp == None:
+            if d.disp is None:
                 unknownDofs = unknownDofs + [d]
         rows = []
         forces = []
@@ -266,7 +283,7 @@ class Truss:
         result = miniM * forcesMatrix
         result.setColLabels([1])
         result.setRowLabels(miniM.colLabels)
-        #result.display()
+        # result.display()
         # print(self.DOFs[0].disp)
         # Assign displacements to DOFs
         for d in self.DOFs:
@@ -282,8 +299,12 @@ class Truss:
 
     def getAnswerForces(self):
         # Convert from member forces on joins to joint forces on members
-        for m in self.members:
-            m.force = m.force * -1
+        self.forcesCalced = True
+        if not self.forcesCalced:
+            for m in self.members:
+                if m.answerForm is False:
+                    m.force = m.force * -1
+                    m.answerForm = True
         return True
 
     def selectSpan(self, height):
@@ -316,14 +337,19 @@ class Truss:
 
     def chooseHSSs(self, HSSList, bottomChordIds, topChordIds):
         topForce = 0
+        topLength = 0
         botForce = 0
+        botLength = 0
         webForce = 0
+        webLength = 0
         for m in self.members:
             placed = False
             for id in bottomChordIds:
                 if m.id == id:
                     if botForce < abs(m.force):
                         botForce = abs(m.force)
+                    if botLength < m.length:
+                        botLength = m.length
                     placed = True
                     break
             if placed:
@@ -332,34 +358,45 @@ class Truss:
                 if m.id == id:
                     if topForce < abs(m.force):
                         topForce = abs(m.force)
+                    if topLength < m.length:
+                        topLength = m.length
                     placed = True
                     break
             if placed:
                 continue
             if webForce < abs(m.force):
                 webForce = abs(m.force)
+            if webLength < m.length:
+                webLength = m.length
+        # Get force signs
+        if
         # Set top, bottom and web HSSs
         for m in self.members:
             set = False
             for id in bottomChordIds:
                 if m.id == id:
-                    m.pickHSS(HSSList, botForce)
+                    m.pickHSS(HSSList, botForce, botLength)
                     set = True
                     break
             if set:
                 continue
             for id in topChordIds:
                 if m.id == id:
-                    m.pickHSS(HSSList, topForce)
+                    m.pickHSS(HSSList, topForce, topLength)
                     set = True
                     break
             if set:
                 continue
-            #Selects HSS for the web forces
-            m.pickHSS(HSSList, webForce)
+            # Selects HSS for the web forces
+            m.pickHSS(HSSList, -webForce, webLength)
         for m in self.members:
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
         return True
+
+    def getMemberByID(self, id):
+        for m in self.members:
+            if m.id == id:
+                return m.duplicate()
 
     def getDeltaR(self, virtual):
         delta = 0
@@ -441,11 +478,11 @@ class DOF:
         return dup
 
 class Variable:
-    
+
     def __init__(self, varName, value):
         self.name = varName
         self.val = float(value)
-        
+
 
 def getSlideValue(strVal, leng):
     type = int
@@ -568,6 +605,6 @@ def subtract(oldStr, sub):
 
 def test():
     print(slideRuleAccuracy(-300.91368421052357))
-    
-    
+
+
 #test()
