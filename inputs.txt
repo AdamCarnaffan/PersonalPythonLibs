@@ -2,7 +2,11 @@
 # This can be an empty section if not needed
 Variables
 h 4.75
-f -64.97
+f -64.9
+# 1 or 0 boolean options
+Options
+# isBridge will take over forces on the bottom span of the bridge
+isBridge 1
 # Define Points in order (related to members)
 Points
 0 0
@@ -46,6 +50,13 @@ Members
 Restraints
 1 xy
 13 y
+Bridge Loads
+# Only applies if isBridge = 1
+# All measures are kN/m
+Live 5
+Deck 2
+# Starting Truss estimate will probably change in final
+Truss 3
 Forces
 3 y f
 5 y f

@@ -552,7 +552,7 @@ def getSlideValue(strVal, leng):
     # Get rounded value
     z = 1
     while True:
-        totalRound = 0
+        print(final)
         roundVal = int(final[len(final)-z]) + 1
         if (len(str(roundVal)) > z):
             z = z + 1
