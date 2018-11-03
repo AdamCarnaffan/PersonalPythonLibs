@@ -218,16 +218,7 @@ def main():
         # print(truss.joints[0].getDOF(2).force)
         virtualTruss.getAnswerForces()
         # virtualTruss.display()
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
+        # 0.0071784033525843245
         print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
         break
     return True

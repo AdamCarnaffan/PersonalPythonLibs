@@ -70,7 +70,12 @@ class Member:
         for dof in self.jointB.DOFs:
             dofs = dofs + [dof.duplicate()]
         return dofs
-
+        
+    def dummy():
+        # Create dummy value
+        dum = Member('', '', 'Power')
+        dum.jointA = Joint()
+        
     def calculateLengthChange(self):
         # trueA = self.jointA.applyDisp()
         # trueB = self.jointB.applyDisp()
@@ -136,15 +141,15 @@ class Member:
         lowestI = 0
         lowestA = 0
         if minForce is None:
-            minForce = self.force
+            minForce = self.duplicate()
         if maxLength is None:
-            maxLength = self.length
+            maxLength = self.duplicate()
         if minForce < 0:
-            lowestA = abs((2*minForce)/crushStress)
-            lowestI = abs((3*minForce*maxLength*maxLength)/(mh.pi*mh.pi*E))
+            lowestA = abs((2*minForce.force)/crushStress)
+            lowestI = abs((3*minForce.force*maxLength.length*maxLength.length)/(mh.pi*mh.pi*E))
         else:
-            lowestA = (2*minForce)/tensileStress
-        slenderness = maxLength*10/2
+            lowestA = (2*minForce.force)/tensileStress
+        slenderness = maxLength.length*10/2
         # find HSS
         possible = []
         for h in HSSs:
@@ -159,23 +164,16 @@ class Member:
             currentLowest = None
             reduced = []
             for p in possible:
-                if currentLowest is None or p.dims[0] < currentLowest:
-                    currentLowest = p.dims[0]
+                if currentLowest is None or p.mass < currentLowest:
+                    currentLowest = p.mass
                     reduced = reduced[len(reduced)-(1+it):len(reduced)-1] + [p]
-                elif p.dims[0] == currentLowest:
+                elif p.mass == currentLowest:
                     reduced = reduced + [p]
-            order = []
-            finalLow = None
-            #print(reduced)
-            for p in reduced:
-                if finalLow is None or p.dims[2] < finalLow:
-                    finalLow = p.dims[2]
-                    order = order + [p]
             it = it + 1
         # Incorporate the structure of the member
-        #print(order)
-        #print(len(order)-(1+self.structureIteration))
-        self.structure = order[len(order) - (1+self.structureIteration)]
+        # print(order)
+        # print(len(order)-(1+self.structureIteration))
+        self.structure = reduced[len(reduced) - (1+self.structureIteration)]
         self.structureIteration = self.structureIteration + 1
         return True
 
@@ -383,9 +381,9 @@ class Truss:
             for id in bottomChordIds:
                 if m.id == id:
                     if botForce < abs(m.force):
-                        botForce = abs(m.force)
+                        botForce = m
                     if botLength < m.length:
-                        botLength = m.length
+                        botLength = m
                     placed = True
                     break
             if placed:
@@ -393,17 +391,17 @@ class Truss:
             for id in topChordIds:
                 if m.id == id:
                     if topForce < abs(m.force):
-                        topForce = abs(m.force)
+                        topForce = m.duplicate()
                     if topLength < m.length:
-                        topLength = m.length
+                        topLength = m.duplicate()
                     placed = True
                     break
             if placed:
                 continue
             if webForce < abs(m.force):
-                webForce = abs(m.force)
+                webForce = m.duplicate()
             if webLength < m.length:
-                webLength = m.length
+                webLength = m.duplicate()
         # Get force signs
         #if
         # Set top, bottom and web HSSs
@@ -552,7 +550,9 @@ def getSlideValue(strVal, leng):
     # Get rounded value
     z = 1
     while True:
-        print(final)
+        if final[len(final)-z] == '.':
+            z = z + 1
+            continue
         roundVal = int(final[len(final)-z]) + 1
         if (len(str(roundVal)) > z):
             z = z + 1
@@ -640,7 +640,7 @@ def subtract(oldStr, sub):
         return 'xy'
 
 def test():
-    print(slideRuleAccuracy(-300.91368421052357))
+    print(slideRuleAccuracy(93.9))
 
 
 #test()
