@@ -74,7 +74,9 @@ class Member:
     def dummy():
         # Create dummy value
         dum = Member('', '', 'Power')
-        dum.jointA = Joint()
+        dum.jointA = Joint(Point(0,0), [0,0])
+        dum.jointB = Joint(Point(0,0), [0,0])
+        return dum
         
     def calculateLengthChange(self):
         # trueA = self.jointA.applyDisp()
