@@ -25,6 +25,11 @@ class Load:
 
     def getTotal(self):
         return self.total
+        
+    def resetMemberLoad(self, load):
+        self.member = load
+        self.calculateTotal()
+        return True
 
 
 class Options:
@@ -153,8 +158,8 @@ def main():
     # force = [[2, 'xy'], [3, 'x'], [3, 'y', -20], [4, 'xy'], [5, 'x']]  # Forces are set (Default val is 0 when not specified)
     # pointOfDeflection = 3
     # deflectionSpan = [1,5] # Members from and to
+    loading = Load(loads)
     while True:
-        loading = Load(loads)
         truss = Truss(joints, members)
         for r in restrict:
             truss.fetchJoint(r[0]).setDisp(r[1], 0)
@@ -169,6 +174,7 @@ def main():
                         j = 0
             lowerPoints = stripZeros(join)
             loadPerPoint = loading.getTotal()/len(lowerPoints)
+            print(loadPerPoint)
             for f in force:
                 for j in lowerPoints:
                     if f[0] == j:
@@ -197,7 +203,7 @@ def main():
         HSSs = []
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
-        truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'))
+        loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper')))
         # Calculate Virtual Work
         virtualTruss = Truss(joints, members)
         for r in restrict:
@@ -219,7 +225,11 @@ def main():
         virtualTruss.getAnswerForces()
         # virtualTruss.display()
         # 0.0071784033525843245
-        print(abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1]))))
+        visualDisp = abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1])))
+        if visualDisp > 1/400:
+            # Must recalculate 
+            print("heu")
+            continue
         break
     return True
 

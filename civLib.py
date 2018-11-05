@@ -139,6 +139,15 @@ class Member:
         if self.hasJoints:  # Set both as they set together
             newM.jointA = self.jointA.duplicate()
             newM.jointB = self.jointB.duplicate()
+            newM.calculate()
+        try:
+            newM.force = self.force
+        except:
+            pass
+        try:
+            newM.structure = self.structure
+        except:
+            pass
         return newM
 
     def pickHSS(self, HSSs, minForce=None, maxLength=None):
@@ -154,9 +163,9 @@ class Member:
             minForce = self.duplicate()
         if maxLength is None:
             maxLength = self.duplicate()
-        if minForce < 0:
+        if minForce.force < 0:
             lowestA = abs((2*minForce.force)/crushStress)
-            lowestI = abs((3*minForce.force*maxLength.length*maxLength.length)/(mh.pi*mh.pi*E))
+            lowestI = abs((3*minForce.force*1000*maxLength.length*1000*maxLength.length*1000)/(mh.pi*mh.pi*E))
         else:
             lowestA = (2*minForce.force)/tensileStress
         slenderness = maxLength.length*10/2
@@ -164,15 +173,18 @@ class Member:
         possible = []
         for h in HSSs:
             if h.area >= lowestA and h.inertia >= lowestI:
-                if minForce >= 0:
+                if minForce.force >= 0:
                     if h.slenderness < slenderness:
                         continue
                 possible = possible + [h]
         it = 0
-        order = []
-        while len(order) <= self.structureIteration:
+        if len(possible) < 1:
+            print("You gotta pick a custom HSS, but I don't do that yet :(")
+            self.structure = HSSs[0]
+            return True
+        reduced = []
+        while len(reduced) <= self.structureIteration:
             currentLowest = None
-            reduced = []
             for p in possible:
                 if currentLowest is None or p.mass < currentLowest:
                     currentLowest = p.mass
@@ -388,21 +400,20 @@ class Truss:
         webForce = Member.dummy()
         webLength = Member.dummy()
         for m in self.members:
+            # print(topForce.force)
             placed = False
             for id in bottomChordIds:
                 if m.id == id:
                     if botForce.force < abs(m.force):
-                        botForce = m
+                        botForce = m.duplicate()
                     if botLength.length < m.length:
-                        botLength = m
+                        botLength = m.duplicate()
                     placed = True
                     break
             if placed:
                 continue
             for id in topChordIds:
                 if m.id == id:
-                    print(topForce.force)
-                    print(m.force)
                     if topForce.force < abs(m.force):
                         topForce = m.duplicate()
                     if topLength.length < m.length:
@@ -434,10 +445,14 @@ class Truss:
             if set:
                 continue
             # Selects HSS for the web forces
-            m.pickHSS(HSSList, -webForce, webLength)
+            m.pickHSS(HSSList, webForce, webLength)
         for m in self.members:
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
-        return True
+        # Calculate total loading with new HSSs
+        mass = 0
+        for m in self.members:
+            mass = mass + m.structure.mass
+        return mass
 
     def getMemberByID(self, id):
         for m in self.members:
@@ -664,6 +679,8 @@ def subtract(oldStr, sub):
 
 def test():
     f = Member.dummy()
+    print(f.force)
+    
 
 
-#test()
+# test()
