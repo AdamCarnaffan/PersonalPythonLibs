@@ -124,7 +124,6 @@ def main():
                     if dataVals[1] == 1:
                         options.setBridge(True)
     # Generate all other dofs as points of 0 force
-    loading = Load(loads)
     sets = restrict + force
     for u in range(1, len(points) + 1, 1):
         offsetStr = ''
@@ -155,6 +154,7 @@ def main():
     # pointOfDeflection = 3
     # deflectionSpan = [1,5] # Members from and to
     while True:
+        loading = Load(loads)
         truss = Truss(joints, members)
         for r in restrict:
             truss.fetchJoint(r[0]).setDisp(r[1], 0)

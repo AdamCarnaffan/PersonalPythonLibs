@@ -70,14 +70,17 @@ class Member:
         for dof in self.jointB.DOFs:
             dofs = dofs + [dof.duplicate()]
         return dofs
-        
+
     def dummy():
         # Create dummy value
         dum = Member('', '', 'Power')
-        dum.jointA = Joint(Point(0,0), [0,0])
-        dum.jointB = Joint(Point(0,0), [0,0])
+        dum.jointA = Joint.dummy()
+        dum.jointB = Joint.dummy()
+        dum.calculate()
+        dum.buildDisp([dum.jointA, dum.jointB])
+        dum.getForce()
         return dum
-        
+
     def calculateLengthChange(self):
         # trueA = self.jointA.applyDisp()
         # trueB = self.jointB.applyDisp()
@@ -88,7 +91,8 @@ class Member:
 
     def getForce(self):
         stiffnessRepresentation = Matrix([[self.cosine, self.sine, -self.cosine, -self.sine]])
-        stiffnessRepresentation.scale(1/self.length)
+        if self.length != 0:
+            stiffnessRepresentation.scale(1/self.length)
         # print("-->", self.id, "<--")
         # self.dispMatrix.display()
         # print("---")
@@ -110,6 +114,10 @@ class Member:
 
     def calculate(self):
         self.length = self.jointA.distance(self.jointB)
+        if self.length == 0:
+            self.sine = 0
+            self.cosine = 0
+            return True
         self.sine = (self.jointB.y - self.jointA.y)/self.length
         self.cosine = (self.jointB.x - self.jointA.x)/self.length
         # DOFS are [a,a,b,b]
@@ -372,19 +380,20 @@ class Truss:
         return membersList
 
     def chooseHSSs(self, HSSList, bottomChordIds, topChordIds):
-        topForce = 0
-        topLength = 0
-        botForce = 0
-        botLength = 0
-        webForce = 0
-        webLength = 0
+        # Select a member to represent the maximum in each case
+        topForce = Member.dummy()
+        topLength = Member.dummy()
+        botForce = Member.dummy()
+        botLength = Member.dummy()
+        webForce = Member.dummy()
+        webLength = Member.dummy()
         for m in self.members:
             placed = False
             for id in bottomChordIds:
                 if m.id == id:
-                    if botForce < abs(m.force):
+                    if botForce.force < abs(m.force):
                         botForce = m
-                    if botLength < m.length:
+                    if botLength.length < m.length:
                         botLength = m
                     placed = True
                     break
@@ -392,20 +401,21 @@ class Truss:
                 continue
             for id in topChordIds:
                 if m.id == id:
-                    if topForce < abs(m.force):
+                    print(topForce.force)
+                    print(m.force)
+                    if topForce.force < abs(m.force):
                         topForce = m.duplicate()
-                    if topLength < m.length:
+                    if topLength.length < m.length:
                         topLength = m.duplicate()
                     placed = True
                     break
             if placed:
                 continue
-            if webForce < abs(m.force):
+            if webForce.force < abs(m.force):
                 webForce = m.duplicate()
-            if webLength < m.length:
+            if webLength.length < m.length:
                 webLength = m.duplicate()
         # Get force signs
-        #if
         # Set top, bottom and web HSSs
         for m in self.members:
             set = False
@@ -446,6 +456,12 @@ class Joint(Point):
     def __init__(self, point, DOFids):
         super(Joint, self).__init__(point.x, point.y, point.designation)
         self.DOFs = [DOF(DOFids[0]), DOF(DOFids[1])]  # 0 is x, 1 is y
+
+    def dummy():
+        dum = Joint(Point(0, 0), [DOF(0), DOF(0)])
+        dum.setForce('xy', 0)
+        dum.setDisp('xy', 0)
+        return dum
 
     def setForce(self, dof, val):
         if dof == 'x':
@@ -513,6 +529,7 @@ class DOF:
         dup.disp = self.disp
         return dup
 
+
 class Variable:
 
     def __init__(self, varName, value):
@@ -569,6 +586,7 @@ def getSlideValue(strVal, leng):
         final = final[0:len(final)-z] + str(roundVal)
     return [final, type]
 
+
 def slideRuleAccuracy(val):
     type = int
     strVal = str(val)
@@ -610,6 +628,7 @@ def slideRuleAccuracy(val):
     else:
         return result
 
+
 def interpVar(value, variables):
     val = None
     try:
@@ -624,6 +643,7 @@ def interpVar(value, variables):
         if val is None:
             return value # A string
     return val
+
 
 def subtract(oldStr, sub):
     if sub == 'xy' or oldStr == '':
@@ -641,8 +661,9 @@ def subtract(oldStr, sub):
     else:
         return 'xy'
 
+
 def test():
-    print(slideRuleAccuracy(93.9))
+    f = Member.dummy()
 
 
 #test()
