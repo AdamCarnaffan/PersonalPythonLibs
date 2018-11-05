@@ -25,7 +25,7 @@ class Load:
 
     def getTotal(self):
         return self.total
-        
+
     def resetMemberLoad(self, load):
         self.member = load
         self.calculateTotal()
@@ -47,7 +47,7 @@ class Options:
 def stripZeros(l):
     final = []
     for val in l:
-        if val != 0:
+        if int(val) != 0:
             final = final + [val]
     return final
 
@@ -166,18 +166,31 @@ def main():
         # Determine forces using Load variable
         if options.getIsBridge():
             # Get joints to distribute between
-            join = truss.selectSpan('lower')
+            mems = truss.selectSpan('lower')
+            # Get joints from members in span
+            join = []
+            for l in mems:
+                m = truss.getMemberByID(l)
+                tempNew = [m.a, m.b]
+                for t in tempNew:
+                    found = False
+                    for j in join:
+                        if j == t:
+                            found = True
+                    if not found:
+                        join = join + [t]
             # Calculate joints to distribute load (Remove joints that are restricted)
             for d in restrict:
+                id = 0
                 for j in join:
-                    if j == d[0]:
-                        j = 0
+                    if j == str(d[0]):
+                        join[id] = '0'
+                    id = id + 1
             lowerPoints = stripZeros(join)
-            loadPerPoint = loading.getTotal()/len(lowerPoints)
-            print(loadPerPoint)
+            loadPerPoint = slideRuleAccuracy(loading.getTotal()/len(lowerPoints))
             for f in force:
                 for j in lowerPoints:
-                    if f[0] == j:
+                    if str(f[0]) == j:
                         # Manipulate joint
                         if f[1] == 'xy':
                             # Split x and y
@@ -196,14 +209,17 @@ def main():
         truss.calculateMemberForces()
         # print(truss.joints[0].getDOF(2).force)
         truss.getAnswerForces()
-        truss.display()
         # Build list of HSSs
         HSSFile = open('fixedData\\HSSData.txt', 'r')
         HSSData = HSSFile.readlines()
         HSSs = []
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
+        prevLoad = loading.getTotal()
         loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper')))
+        if prevLoad != loading.getTotal():
+            continue
+        truss.display()
         # Calculate Virtual Work
         virtualTruss = Truss(joints, members)
         for r in restrict:
@@ -227,9 +243,9 @@ def main():
         # 0.0071784033525843245
         visualDisp = abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1])))
         if visualDisp > 1/400:
-            # Must recalculate 
-            print("heu")
+            # Must recalculate
             continue
+        print(visualDisp)
         break
     return True
 

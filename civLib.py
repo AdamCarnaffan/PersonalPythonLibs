@@ -350,7 +350,7 @@ class Truss:
 
     def display(self):
         for m in self.members:
-            print(m.id, "-->", slideRuleAccuracy(m.force))
+            print(m.id, "-->", slideRuleAccuracy(m.force), "(" + m.structure.size + ")")
         return True
 
     def getAnswerForces(self):
@@ -680,7 +680,7 @@ def subtract(oldStr, sub):
 def test():
     f = Member.dummy()
     print(f.force)
-    
+
 
 
 # test()
