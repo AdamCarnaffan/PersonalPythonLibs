@@ -71,6 +71,12 @@ class Member:
             dofs = dofs + [dof.duplicate()]
         return dofs
 
+    def getID(self):
+        return self.id
+        
+    def getIteration(self):
+        return self.structureIteration
+
     def dummy():
         # Create dummy value
         dum = Member('', '', 'Power')
@@ -146,11 +152,12 @@ class Member:
             pass
         try:
             newM.structure = self.structure
+            newM.structureIteration = self.structureIteration
         except:
             pass
         return newM
 
-    def pickHSS(self, HSSs, minForce=None, maxLength=None):
+    def pickHSS(self, HSSs, minForce=None, maxLength=None, incr=False):
         if self.answerForm is False:
             self.force = self.force * (-1)
             self.answerForm = True
@@ -183,20 +190,24 @@ class Member:
             self.structure = HSSs[0]
             return True
         reduced = []
-        while len(reduced) <= self.structureIteration:
-            currentLowest = None
-            for p in possible:
-                if currentLowest is None or p.mass < currentLowest:
-                    currentLowest = p.mass
-                    reduced = reduced[len(reduced)-(1+it):len(reduced)-1] + [p]
-                elif p.mass == currentLowest:
-                    reduced = reduced + [p]
-            it = it + 1
+        # while len(reduced) <= self.structureIteration:
+        #     currentLowest = None
+        #     for p in possible:
+        #         if currentLowest is None or p.mass < currentLowest:
+        #             currentLowest = p.mass
+        #             reduced = reduced[len(reduced)-(1+it):len(reduced)] + [p]
+        #             #print(reduced)
+        #         elif p.mass == currentLowest:
+        #             reduced = reduced + [p]
+        #     it = it + 1
         # Incorporate the structure of the member
-        # print(order)
-        # print(len(order)-(1+self.structureIteration))
+        def HSSSort(x):
+            return -x.mass
+        reduced = sorted(possible, key = HSSSort)
+        # print(len(reduced)-(1+self.structureIteration))
         self.structure = reduced[len(reduced) - (1+self.structureIteration)]
-        self.structureIteration = self.structureIteration + 1
+        if incr:
+            self.structureIteration = self.structureIteration + 1
         return True
 
 
@@ -318,6 +329,19 @@ class Truss:
             m.getForce()
         return True
 
+    def connectHSSIterations(self, previousState):
+        for val in previousState:
+            for m in self.members:
+                if m.id == val[0]:
+                    m.structureIteration = val[1]
+        return True
+
+    def getMembers(self):
+        mems = []
+        for m in self.members:
+            mems = mems + [m.duplicate()]
+        return mems
+
     def calculateDisplacements(self):
         self.compileDofs()
         # Build matrix with dofs of unknown displacement
@@ -332,6 +356,7 @@ class Truss:
         for u in unknownDofs:
             rows = rows + [u.id]
             forces = forces + [[u.force]]
+        # print(forces)
         forcesMatrix = Matrix(forces, rows, rows)
         miniM = self.stiffness.getSubByLabels(rows, rows)
         miniM.invert()
@@ -391,7 +416,7 @@ class Truss:
                 membersList = membersList + [l.id]
         return membersList
 
-    def chooseHSSs(self, HSSList, bottomChordIds, topChordIds):
+    def chooseHSSs(self, HSSList, bottomChordIds, topChordIds, incrChords):
         # Select a member to represent the maximum in each case
         topForce = Member.dummy()
         topLength = Member.dummy()
@@ -428,31 +453,55 @@ class Truss:
                 webLength = m.duplicate()
         # Get force signs
         # Set top, bottom and web HSSs
+        anti = True if incrChords is False else False
         for m in self.members:
             set = False
             for id in bottomChordIds:
                 if m.id == id:
-                    m.pickHSS(HSSList, botForce, botLength)
+                    m.pickHSS(HSSList, botForce, botLength, incrChords)
                     set = True
                     break
             if set:
                 continue
             for id in topChordIds:
                 if m.id == id:
-                    m.pickHSS(HSSList, topForce, topLength)
+                    m.pickHSS(HSSList, topForce, topLength, incrChords)
+                    chordx = m
                     set = True
                     break
             if set:
                 continue
             # Selects HSS for the web forces
-            m.pickHSS(HSSList, webForce, webLength)
+            m.pickHSS(HSSList, webForce, webLength, anti)
+            webx = m
+        # Check HSS relativity (if chords are smaller than web, increase chords to match web)
+        chordSize = chordx.structure.size.split('x')
+        webSize = webx.structure.size.split('x')
+        if float(webSize[0]) > float(chordSize[0]) or float(webSize[2]) > float(chordSize[2]):
+            for m in self.members:
+                set = False
+                for id in bottomChordIds:
+                    if m.id == id:
+                        m.pickHSS(HSSList, webForce, webLength, anti)
+                        set = True
+                        break
+                if set:
+                    continue
+                for id in topChordIds:
+                    if m.id == id:
+                        m.pickHSS(HSSList, webForce, webLength, anti)
+                        chordx = m
+                        set = True
+                        break
+                if set:
+                    continue
         for m in self.members:
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
         # Calculate total loading with new HSSs
-        mass = 0
+        load = 0
         for m in self.members:
-            mass = mass + m.structure.mass
-        return mass
+            load = load + m.structure.deadLoad
+        return load
 
     def getMemberByID(self, id):
         for m in self.members:
@@ -678,9 +727,22 @@ def subtract(oldStr, sub):
 
 
 def test():
-    f = Member.dummy()
-    print(f.force)
+    HSSFile = open('fixedData\\HSSData.txt', 'r')
+    HSSData = HSSFile.readlines()
+    HSSs = []
+    for line in HSSData:
+        HSSs = HSSs + [HSS(line)]
+    m = Member(1, 2, 1)
+    m.setJoints([Joint(Point(0,0), [1,2]), Joint(Point(5.5,0), [3,4])])
+    m.calculate()
+    m.force = 95.52631578947224
+    m.pickHSS(HSSs, incr=True)
+    print(m.structure.size)
+    m.pickHSS(HSSs, incr=True)
+    print(m.structure.size)
+    m.pickHSS(HSSs)
+    print(m.structure.size)
 
 
 
-# test()
+#test()

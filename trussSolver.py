@@ -26,10 +26,17 @@ class Load:
     def getTotal(self):
         return self.total
 
+    def getSelfWeight(self):
+        return self.member + self.deck
+
     def resetMemberLoad(self, load):
         self.member = load
         self.calculateTotal()
         return True
+        
+    def duplicate(self):
+        new = Load([self.live, self.deck, self.member])
+        return new
 
 
 class Options:
@@ -159,8 +166,15 @@ def main():
     # pointOfDeflection = 3
     # deflectionSpan = [1,5] # Members from and to
     loading = Load(loads)
+    toggleUptick = True
+    established = False
     while True:
+        if established:
+            state = []
+            for m in truss.getMembers():
+                state = state + [[m.getID(), m.getIteration()]]
         truss = Truss(joints, members)
+        bottomSpanLength = points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1])
         for r in restrict:
             truss.fetchJoint(r[0]).setDisp(r[1], 0)
         # Determine forces using Load variable
@@ -187,7 +201,7 @@ def main():
                         join[id] = '0'
                     id = id + 1
             lowerPoints = stripZeros(join)
-            loadPerPoint = slideRuleAccuracy(loading.getTotal()/len(lowerPoints))
+            loadPerPoint = slideRuleAccuracy(loading.getTotal()*bottomSpanLength/len(lowerPoints))
             for f in force:
                 for j in lowerPoints:
                     if str(f[0]) == j:
@@ -209,6 +223,14 @@ def main():
         truss.calculateMemberForces()
         # print(truss.joints[0].getDOF(2).force)
         truss.getAnswerForces()
+        # Apply structural iterations
+        if established:
+            truss.connectHSSIterations(state)
+        # l = truss.getMemberByID(2)
+        # print(l.jointA.x, l.jointA.y)
+        # print(l.jointB.x, l.jointB.y)
+        # print(l.force)
+        # break
         # Build list of HSSs
         HSSFile = open('fixedData\\HSSData.txt', 'r')
         HSSData = HSSFile.readlines()
@@ -216,10 +238,11 @@ def main():
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
         prevLoad = loading.getTotal()
-        loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper')))
-        if prevLoad != loading.getTotal():
-            continue
+        loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'), toggleUptick))
+        established = True # For maintaining HSS establishment state
+        #toggleUptick = False if toggleUptick else True
         truss.display()
+        # truss.display()
         # Calculate Virtual Work
         virtualTruss = Truss(joints, members)
         for r in restrict:
@@ -241,12 +264,37 @@ def main():
         virtualTruss.getAnswerForces()
         # virtualTruss.display()
         # 0.0071784033525843245
-        visualDisp = abs(truss.getDeltaR(virtualTruss))/((points[deflectionSpan[0]-1].distance(points[deflectionSpan[1]-1])))
+        visualDisp = abs(truss.getDeltaR(virtualTruss))/(bottomSpanLength)
         if visualDisp > 1/400:
             # Must recalculate
             continue
         print(visualDisp)
+        # Do frequency stuff
+        # Create a truss with the oscillatory load
+        distrib = 17.75
+        selfFreq = distrib/mh.sqrt(loading.getSelfWeight())
+        maxFreq = distrib/mh.sqrt(loading.getTotal()*1.5)
+        DAF = 1/(1+(maxFreq/selfFreq))
+        maxTruss = Truss(joints, members)
+        for f in force:
+            val = 0 if len(f) == 2 else f[2]
+            maxTruss.fetchJoint(f[0]).setForce(f[1], val*1.5)
+        for r in restrict:
+            maxTruss.fetchJoint(r[0]).setDisp(r[1], 0)
+        maxTruss.calculateDisplacements()
+        maxTruss.calculateJointForces()
+        maxTruss.calculateMemberForces()
+        # print(truss.joints[0].getDOF(2).force)
+        maxTruss.getAnswerForces()
+        maxTruss.chooseHSSs(HSSs, maxTruss.selectSpan('lower'), maxTruss.selectSpan('upper'), True)
+        maxDisp = abs(maxTruss.getDeltaR(virtualTruss))/(bottomSpanLength)
+        print(maxDisp)
+        truss.display()
+        if maxDisp > 1/400:
+            # Must recalculate
+            continue
+        print(maxDisp)
         break
     return True
-
+    
 main()
