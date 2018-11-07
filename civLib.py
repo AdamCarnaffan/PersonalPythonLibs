@@ -75,7 +75,7 @@ class Member:
 
     def getID(self):
         return self.id
-        
+
     def getIteration(self):
         return self.structureIteration
 
@@ -161,7 +161,11 @@ class Member:
         try:
             newM.dispMatrix = self.dispMatrix.duplicate()
             newM.stiffnessMatrix = self.stiffnessMatrix.duplicate()
+        except:
+            pass
+        try:
             newM.force = self.force
+            newM.length = self.length
         except:
             pass
         try:
@@ -195,12 +199,14 @@ class Member:
         else:
             lowestA = (2*minForce.force*1000)/tensileStress
         slenderness = maxLength.length*10/2
+        # print(lowestI)
         # find HSS
         possible = []
         for h in HSSs:
             if h.area >= lowestA and h.inertia >= lowestI:
                 if minForce.force >= 0:
                     if h.slenderness < slenderness:
+                        # print(h.size)
                         continue # Skips members that don't fit the slenderness
                 possible = possible + [h]
         it = 0
@@ -232,6 +238,8 @@ class Member:
         # print(reduced[len(reduced) - (1+self.structureIteration)].area)
         # print(len(reduced)-(1+self.structureIteration))
         self.structure = reduced[len(reduced) - (1+self.structureIteration)]
+        # print(self.structure.size)
+        # print("---")
         if incr:
             self.structureIteration = self.structureIteration + 1
         return True
@@ -691,7 +699,7 @@ def getSlideValue(strVal, leng):
     if final[len(final)-z-1] == '.':
         strip = int(float(final[0:len(final)-z] + str(0)))
     else:
-        strip = int(final[0:len(final)-z])
+        strip = int(float(final[0:len(final)-z]))
     valsToSize = 0
     temp = strip
     if float(final) > 1:
@@ -794,8 +802,16 @@ def subtract(oldStr, sub):
 
 
 def test():
-    #x = Member()
-    pass
-
+    HSSFile = open('fixedData\\HSSData.txt', 'r')
+    HSSData = HSSFile.readlines()
+    HSSs = []
+    for line in HSSData:
+        HSSs = HSSs + [HSS(line)]
+    x = Member.dummy()
+    x.length = 10.56
+    x.force = -186
+    x.answerForm = True
+    x.pickHSS(HSSs)
+    return True
 
 #test()

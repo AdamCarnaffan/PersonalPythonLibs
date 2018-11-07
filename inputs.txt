@@ -9,21 +9,21 @@ isBridge 1
 # Define Points in order (related to members)
 Points
 0 0
-10.8 h
-10.8 0
-21.6 h
-21.6 0
-32.4 h
-32.4 0
-43.2 h
-43.2 0
-54.0 h
-54.0 0
-64.8 h
-64.8 0
-75.6 h
-75.6 0
-86.4 0
+10.58 h
+10.58 0
+21.16 h
+21.16 0
+31.74 h
+31.74 0
+42.32 h
+42.32 0
+52.9 h
+52.9 0
+63.48 h
+63.48 0
+74.06 h
+74.06 0
+84.64 0
 # Select first and second point for members (members in order of id)
 Members
 1 2

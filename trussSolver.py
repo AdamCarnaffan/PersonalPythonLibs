@@ -176,6 +176,7 @@ def main():
     toggleUptick = True
     established = False
     fullPass = False
+    prevState = []
     while True:
         if established:
             state = []
@@ -248,7 +249,7 @@ def main():
         HSSs = []
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
-        #prevLoad = loading.getTotal()
+        # prevLoad = loading.getTotal()
         if not fullPass:
             loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'), toggleUptick))
         else:
@@ -264,10 +265,11 @@ def main():
         # s.dispMatrix.display()
         # s.stiffnessMatrix.display()
         # truss.stiffness.display()
+        # sys.exit()
         # truss.display()
-        established = True # For maintaining HSS establishment state
-        #toggleUptick = False if toggleUptick else True
-        #truss.display()
+        established = True  # For maintaining HSS establishment state
+        # toggleUptick = False if toggleUptick else True
+        # truss.display()
         # truss.display()
         # Calculate Virtual Work
         virtualTruss = Truss(joints, members)
@@ -321,7 +323,7 @@ def main():
             # Must recalculate
             fullPass = False
             continue
-        #print(maxDisp)
+        # print(maxDisp)
         if fullPass:
             break
         fullPass = True
