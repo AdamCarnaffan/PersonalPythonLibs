@@ -431,27 +431,49 @@ class Matrix:
         return True
 
     def getREF(self):
+        # dup = self.duplicate()
+        # start = 1
+        # swaps = 0
+        # for c in range(0, dup.cols-1, 1):
+        #     i = 0
+        #     while True:
+        #         if dup.M[start - 1][c] == 0:
+        #             if (start + i >= self.rows):
+        #                 return c # Rows = cols
+        #             dup.swapRows(start-1, start + i)
+        #             swaps = swaps + 1
+        #             i = i + 1
+        #         else:
+        #             break
+        #     row = Matrix([dup.M[start - 1]])
+        #     for r in range(start, dup.rows, 1):
+        #         currentValue = dup.getValue(r, c)
+        #         rowDupe = row.duplicate()
+        #         rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
+        #         dup.modifyRowAdd(r, rowDupe.M[0])
+        #     start = start + 1
+        # dup.swaps = swaps
         dup = self.duplicate()
-        start = 1
-        swaps = 0
-        for c in range(0, dup.cols-1, 1):
-            i = 0
-            while True:
-                if dup.M[start - 1][c] == 0:
-                    dup.swapRows(start-1, start + i)
-                    swaps = swaps + 1
-                    i = i + 1
-                else:
-                    break
-            row = Matrix([dup.M[start - 1]])
-            for r in range(start, dup.rows, 1):
-                currentValue = dup.getValue(r, c)
-                rowDupe = row.duplicate()
-                rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
-                dup.modifyRowAdd(r, rowDupe.M[0])
-            start = start + 1
-        dup.swaps = swaps
+
         return dup
+
+    def geFwdStep(self):
+        # Make sure first is non-zero row
+        if self.M[0][0] == 0:
+            ind = 0
+            for r in self.M:
+                if r[0] != 0:
+                    self.swapRows(0, ind)
+                ind = ind + 1
+        # Add multiples of first to lowers
+        first = self.M[0]
+        for r in range(1, self.rows, 1):
+            # Scale row
+            sc = Matrix([first])
+            sc.scale(-(self.M[r][0]/sc.M[0][0])) # For subtraction
+            rowM = Matrix([self.M[r]])
+            finalRow = rowM + sc
+
 
     def getDeterminant(self):
         if self.rows != self.cols:
@@ -460,7 +482,16 @@ class Matrix:
         if self.rows == 2:
             return self.M[0][0]*self.M[1][1] - self.M[0][1]*self.M[1][0]
         else:
-            ref = self.getREF()
+            i = 0
+            while True:
+                ref = self.getREF()
+                if type(ref) == int:
+                    self.display()
+                    break
+                    self.swapRows(i, ref)
+                    i = i + 1
+                    continue
+                break
             det = 1
             for r in range(0, ref.rows, 1):
                 det = det * ref.getValue(r, r)

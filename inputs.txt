@@ -1,8 +1,7 @@
 # Personally defined values (just for convenience)
 # This can be an empty section if not needed
 Variables
-h 4.75
-f -64.9
+h 5.4
 # 1 or 0 boolean options
 Options
 # isBridge will take over forces on the bottom span of the bridge
@@ -10,60 +9,65 @@ isBridge 1
 # Define Points in order (related to members)
 Points
 0 0
-2.75 h
-5.5 0
-8.25 h
-11 0
-13.75 h
-16.5 0
-19.25 h
-22 0
-24.75 h
-27.5 0
-30.25 h
-33 0
+10.8 h
+10.8 0
+21.6 h
+21.6 0
+32.4 h
+32.4 0
+43.2 h
+43.2 0
+54.0 h
+54.0 0
+64.8 h
+64.8 0
+75.6 h
+75.6 0
+86.4 0
 # Select first and second point for members (members in order of id)
 Members
 1 2
 1 3
 2 3
-2 4
-3 4
 3 5
+2 5
+2 4
 4 5
-4 6
-5 6
 5 7
-6 7
+5 6
+4 6
 6 8
-7 8
+6 7
 7 9
+6 9
 8 9
 8 10
 9 10
 9 11
-10 11
-10 12
-11 12
 11 13
+10 11
+10 13
+10 12
 12 13
+13 14
+13 15
+12 14
+14 16
+14 15
+15 16
 Restraints
 1 xy
-13 y
+9 y
+16 y
 Bridge Loads
 # Only applies if isBridge = 1
 # All measures are kN/m
 Live 5
-Deck 2
+Deck 4.58
 # Starting Truss estimate will probably change in final
 Truss 3
 Forces
-3 y f
-5 y f
-7 y f
-9 y f
-11 y f
 Point of Deflection
-7
+13
 Span of Deflection
-1 13
+9 16
