@@ -2,6 +2,7 @@
 
 from personalMathLib import Matrix, Point
 import math as mh
+import sys
 
 # Global Young's modulos
 E = 200000
@@ -42,6 +43,7 @@ class Member:
         self.hasJoints = False
         self.answerForm = False
         self.structureIteration = 0
+        self.force = 0
 
     def setJoints(self, joints):
         self.jointA = joints[0]
@@ -96,14 +98,23 @@ class Member:
         return True
 
     def getForce(self):
+        # print("ID IS",self.id)
+        # print("-----")
+        # print(self.sine)
+        # print(self.cosine)
         stiffnessRepresentation = Matrix([[self.cosine, self.sine, -self.cosine, -self.sine]])
         if self.length != 0:
             stiffnessRepresentation.scale(1/self.length)
+        # stiffnessRepresentation.display()
+        # self.dispMatrix.display()
+        # print("-----")
         # print("-->", self.id, "<--")
         # self.dispMatrix.display()
         # print("---")
         # stiffnessRepresentation.display()
         result = stiffnessRepresentation * self.dispMatrix
+        # result.display()
+        # print("*****")
         self.force = result.getValue(0, 0)
         return True
 
@@ -145,9 +156,17 @@ class Member:
         if self.hasJoints:  # Set both as they set together
             newM.jointA = self.jointA.duplicate()
             newM.jointB = self.jointB.duplicate()
+            newM.hasJoints = True
             newM.calculate()
         try:
+            newM.dispMatrix = self.dispMatrix.duplicate()
+            newM.stiffnessMatrix = self.stiffnessMatrix.duplicate()
             newM.force = self.force
+        except:
+            pass
+        try:
+            newM.height = self.height
+            newM.isHorizontal = self.isHorizontal
         except:
             pass
         try:
@@ -171,10 +190,10 @@ class Member:
         if maxLength is None:
             maxLength = self.duplicate()
         if minForce.force < 0:
-            lowestA = abs((2*minForce.force)/crushStress)
+            lowestA = abs((2*minForce.force*1000)/crushStress)
             lowestI = abs((3*minForce.force*1000*maxLength.length*1000*maxLength.length*1000)/(mh.pi*mh.pi*E))
         else:
-            lowestA = (2*minForce.force)/tensileStress
+            lowestA = (2*minForce.force*1000)/tensileStress
         slenderness = maxLength.length*10/2
         # find HSS
         possible = []
@@ -182,7 +201,7 @@ class Member:
             if h.area >= lowestA and h.inertia >= lowestI:
                 if minForce.force >= 0:
                     if h.slenderness < slenderness:
-                        continue
+                        continue # Skips members that don't fit the slenderness
                 possible = possible + [h]
         it = 0
         if len(possible) < 1:
@@ -204,6 +223,13 @@ class Member:
         def HSSSort(x):
             return -x.mass
         reduced = sorted(possible, key = HSSSort)
+        # print("-----")
+        # print(lowestA)
+        # print(lowestI)
+        # print("****")
+        # print(reduced[len(reduced) - (1+self.structureIteration)].size)
+        # print(reduced[len(reduced) - (1+self.structureIteration)].inertia)
+        # print(reduced[len(reduced) - (1+self.structureIteration)].area)
         # print(len(reduced)-(1+self.structureIteration))
         self.structure = reduced[len(reduced) - (1+self.structureIteration)]
         if incr:
@@ -310,6 +336,9 @@ class Truss:
         # dispMatrix.display()
         # print("s")
         # Calculate forces
+        # miniM.display()
+        # dispMatrix.display()
+        # sys.exit()
         forces = miniM * dispMatrix
         forces.setRowLabels(rows)
         forces.setColLabels([1])
@@ -327,6 +356,7 @@ class Truss:
                 js = js + [self.fetchJoint(j)]
             m.buildDisp(js)
             m.getForce()
+            #print(m.force)
         return True
 
     def connectHSSIterations(self, previousState):
@@ -380,12 +410,13 @@ class Truss:
 
     def getAnswerForces(self):
         # Convert from member forces on joins to joint forces on members
-        self.forcesCalced = True
         if not self.forcesCalced:
             for m in self.members:
                 if m.answerForm is False:
                     m.force = m.force * -1
                     m.answerForm = True
+                    #print(m.force)
+        self.forcesCalced = True
         return True
 
     def selectSpan(self, height):
@@ -502,6 +533,14 @@ class Truss:
         for m in self.members:
             load = load + m.structure.deadLoad
         return load
+
+    def connectHSSs(self, info):
+        for m in self.members:
+            for i in info:
+                if i[0] == m.id:
+                    m.structure = i[1]
+                    m.calculateLengthChange()
+        return True
 
     def getMemberByID(self, id):
         for m in self.members:
@@ -632,26 +671,52 @@ def getSlideValue(strVal, leng):
     # Check for rounding
     # Get rounded value
     z = 1
+    passDec = False
+    l = 0
     while True:
         if final[len(final)-z] == '.':
             z = z + 1
+            passDec = True
+            l = 2
             continue
         roundVal = int(final[len(final)-z]) + 1
+        if passDec:
+            l = l + 1
         if (len(str(roundVal)) > z):
             z = z + 1
         else:
-            roundVal = roundVal * mh.pow(10, z)
+            roundVal = roundVal * mh.pow(10, z-l)
             break
     roundVal = int(roundVal)
+    if final[len(final)-z-1] == '.':
+        strip = int(float(final[0:len(final)-z] + str(0)))
+    else:
+        strip = int(final[0:len(final)-z])
+    valsToSize = 0
+    temp = strip
+    if float(final) > 1:
+        while temp < float(final):
+            valsToSize = valsToSize + 1
+            temp = temp * mh.pow(10, valsToSize)
+    # Else we gotta do a decimal thing
+    strip = strip * mh.pow(10, valsToSize-1)
     if strVal[i] != '.' and int(strVal[i]) > 4:
-        final = final[0:len(final)-z] + str(roundVal)
+        final = strip + roundVal
     elif strVal[i] == '.' and int(strVal[i+1]) > 4:
         roundVal = int(roundVal / 10)
-        final = final[0:len(final)-z] + str(roundVal)
+        final = strip + roundVal
     return [final, type]
 
 
-def slideRuleAccuracy(val):
+def slideRuleAccuracy(value):
+    # No need to convert a 0
+    val = value
+    if val == 0:
+        return 0
+    conv = False
+    if val < 0.0000000001 and val > 0:
+        val = val * 10000000000
+        conv = True
     type = int
     strVal = str(val)
     is0Dec = False
@@ -687,6 +752,8 @@ def slideRuleAccuracy(val):
         result = int(final)
     else:
         result = float(final)
+    if conv:
+        result = result / 10000000000
     if neg:
         return -result
     else:
@@ -727,22 +794,8 @@ def subtract(oldStr, sub):
 
 
 def test():
-    HSSFile = open('fixedData\\HSSData.txt', 'r')
-    HSSData = HSSFile.readlines()
-    HSSs = []
-    for line in HSSData:
-        HSSs = HSSs + [HSS(line)]
-    m = Member(1, 2, 1)
-    m.setJoints([Joint(Point(0,0), [1,2]), Joint(Point(5.5,0), [3,4])])
-    m.calculate()
-    m.force = 95.52631578947224
-    m.pickHSS(HSSs, incr=True)
-    print(m.structure.size)
-    m.pickHSS(HSSs, incr=True)
-    print(m.structure.size)
-    m.pickHSS(HSSs)
-    print(m.structure.size)
-
+    #x = Member()
+    pass
 
 
 #test()

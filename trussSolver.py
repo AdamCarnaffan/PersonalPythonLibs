@@ -1,6 +1,7 @@
 # Inspired by https://nptel.ac.in/courses/Webcourse-contents/IIT%20Kharagpur/Structural%20Analysis/pdf/m4l25.pdf
 
 from civLib import *
+import sys
 
 
 class Load:
@@ -9,6 +10,7 @@ class Load:
         self.live = loads[0]
         self.deck = loads[1]
         self.member = loads[2]
+        self.area = loads[3]
         self.calculateTotal()
 
     def setMemberLoad(self, val):
@@ -16,7 +18,7 @@ class Load:
         return True
 
     def calculateTotal(self):
-        self.total = self.member + self.deck + self.live
+        self.total = (self.member + self.deck + self.live)*self.area
         return True
 
     def setTotalLoad(self, val):
@@ -76,7 +78,7 @@ def main():
     force = []
     pointOfDeflection = 0
     deflectionSpan = []
-    loads = [0, 0, 0]  # Set defaults for all loads
+    loads = [0, 0, 0, 0]  # Set defaults for all loads
     d = 0
     options = Options()
     for l in data:
@@ -134,6 +136,8 @@ def main():
                     loads[1] = dataVals[1]
                 elif dataVals[0] == "Truss":
                     loads[2] = dataVals[1]
+                elif dataVals[0] == "TribArea":
+                    loads[3] = dataVals[1]
             elif mode == 9:
                 if dataVals[0] == "isBridge":
                     if dataVals[1] == 1:
@@ -171,6 +175,7 @@ def main():
     loading = Load(loads)
     toggleUptick = True
     established = False
+    fullPass = False
     while True:
         if established:
             state = []
@@ -204,7 +209,8 @@ def main():
                         join[id] = '0'
                     id = id + 1
             lowerPoints = stripZeros(join)
-            loadPerPoint = slideRuleAccuracy(loading.getTotal()*bottomSpanLength/len(lowerPoints))
+            loadPerPoint = slideRuleAccuracy(loading.getTotal()/len(lowerPoints))
+            ind = 0
             for f in force:
                 for j in lowerPoints:
                     if str(f[0]) == j:
@@ -212,12 +218,14 @@ def main():
                         if f[1] == 'xy':
                             # Split x and y
                             force = force + [[f[0], 'x']]
+                            f[1] = 'y'
                         elif f[1] == 'x':
                             continue
                         if len(f) == 2:
-                            f = f + [0]
+                            force[ind] = force[ind] + [0]
                         # Now we have y for sure
-                        f[2] = loadPerPoint
+                        force[ind][2] = loadPerPoint
+                ind = ind + 1
         for f in force:
             val = 0 if len(f) == 2 else f[2]
             truss.fetchJoint(f[0]).setForce(f[1], val)
@@ -240,11 +248,26 @@ def main():
         HSSs = []
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
-        prevLoad = loading.getTotal()
-        loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'), toggleUptick))
+        #prevLoad = loading.getTotal()
+        if not fullPass:
+            loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'), toggleUptick))
+        else:
+            truss.connectHSSs(prevState)
+        # b = truss.getMemberByID(1)
+        # b.dispMatrix.display()
+        # b.stiffnessMatrix.display()
+        # s = truss.getMemberByID(3)
+        # s.jointA.display()
+        # s.jointB.display()
+        # print(s.cosine)
+        # print(s.sine)
+        # s.dispMatrix.display()
+        # s.stiffnessMatrix.display()
+        # truss.stiffness.display()
+        # truss.display()
         established = True # For maintaining HSS establishment state
         #toggleUptick = False if toggleUptick else True
-        truss.display()
+        #truss.display()
         # truss.display()
         # Calculate Virtual Work
         virtualTruss = Truss(joints, members)
@@ -270,6 +293,7 @@ def main():
         visualDisp = abs(truss.getDeltaR(virtualTruss))/(bottomSpanLength)
         if visualDisp > 1/400:
             # Must recalculate
+            fullPass = False
             continue
         print(visualDisp)
         # Do frequency stuff
@@ -295,8 +319,17 @@ def main():
         print(maxDisp)
         if maxDisp > 1/400:
             # Must recalculate
+            fullPass = False
             continue
-        print(maxDisp)
+        #print(maxDisp)
+        if fullPass:
+            break
+        fullPass = True
+        # Save previous HSSs for verification
+        prevState = []
+        for m in truss.members:
+            prevState = prevState + [[m.id, m.structure]]
+    print("LOAD OF", str(loading.getTotal()) + "kN (Distrubuted evenly between loading points)")
     truss.display()
     return True
 

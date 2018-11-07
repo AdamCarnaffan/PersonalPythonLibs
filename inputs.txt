@@ -65,7 +65,8 @@ Bridge Loads
 Live 5
 Deck 4.58
 # Starting Truss estimate will probably change in final
-Truss 3
+Truss 5
+TribArea 32.94
 Forces
 Point of Deflection
 13
