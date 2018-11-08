@@ -1,7 +1,8 @@
 # Personally defined values (just for convenience)
 # This can be an empty section if not needed
 Variables
-h 5.4
+h 4.29
+ho 2.145
 # 1 or 0 boolean options
 Options
 # isBridge will take over forces on the bottom span of the bridge
@@ -9,66 +10,84 @@ isBridge 1
 # Define Points in order (related to members)
 Points
 0 0
+5.29 h
+5.29 ho
+5.29 0
 10.58 h
+10.58 ho
 10.58 0
+15.87 h
+15.87 ho
+15.87 0
 21.16 h
 21.16 0
+26.45 h
+26.45 ho
+26.45 0
 31.74 h
+31.74 ho
 31.74 0
-42.32 h
+37.03 h
+37.03 ho
+37.03 0
 42.32 0
-52.9 h
-52.9 0
-63.48 h
-63.48 0
-74.06 h
-74.06 0
-84.64 0
 # Select first and second point for members (members in order of id)
 Members
 1 2
-1 3
-2 3
-3 5
+1 4
+4 3
+3 2
 2 5
-2 4
-4 5
-5 7
-5 6
-4 6
-6 8
+3 5
+3 7
+4 7
 6 7
-7 9
-6 9
+5 6
+6 10
+6 8
+7 10
+5 8
+8 11
 8 9
-8 10
 9 10
+10 12
+9 12
 9 11
 11 13
-10 11
-10 13
-10 12
-12 13
-13 14
-13 15
+11 12
+11 14
 12 14
-14 16
+12 15
+13 16
+13 17
+13 14
 14 15
-15 16
+15 17
+15 18
+16 19
+16 20
+16 17
+17 18
+18 20
+18 21
+19 22
+19 20
+20 21
+21 22
 Restraints
 1 xy
-9 y
-16 y
+22 y
 Bridge Loads
 # Only applies if isBridge = 1
-# All measures are kN/m
+# All measures are kN/m^2
 Live 5
 Deck 4.58
 # Starting Truss estimate will probably change in final
-Truss 5
-TribArea 32.94
+Truss 0.75
+# The area to multiply the loads by to get joint load
+TribArea 16.1345
 Forces
 Point of Deflection
-13
+12
 Span of Deflection
-9 16
+1 22

@@ -210,40 +210,46 @@ class Member:
                         continue # Skips members that don't fit the slenderness
                 possible = possible + [h]
         it = 0
-        if len(possible) < 1:
-            print("You gotta pick a custom HSS, but I don't do that yet :(")
-            self.structure = HSSs[0]
+        if (len(possible) < 1) or (len(possible) - self.structureIteration < 1):
+            self.pickCustomHSS([lowestA, lowestI, minForce.force, slenderness])
             return True
         reduced = []
-        # while len(reduced) <= self.structureIteration:
-        #     currentLowest = None
-        #     for p in possible:
-        #         if currentLowest is None or p.mass < currentLowest:
-        #             currentLowest = p.mass
-        #             reduced = reduced[len(reduced)-(1+it):len(reduced)] + [p]
-        #             #print(reduced)
-        #         elif p.mass == currentLowest:
-        #             reduced = reduced + [p]
-        #     it = it + 1
         # Incorporate the structure of the member
         def HSSSort(x):
             return -x.mass
         reduced = sorted(possible, key = HSSSort)
-        # print("-----")
-        # print(lowestA)
-        # print(lowestI)
-        # print("****")
-        # print(reduced[len(reduced) - (1+self.structureIteration)].size)
-        # print(reduced[len(reduced) - (1+self.structureIteration)].inertia)
-        # print(reduced[len(reduced) - (1+self.structureIteration)].area)
-        # print(len(reduced)-(1+self.structureIteration))
         self.structure = reduced[len(reduced) - (1+self.structureIteration)]
-        # print(self.structure.size)
-        # print("---")
-        if incr:
-            self.structureIteration = self.structureIteration + 1
         return True
 
+
+    def pickCustomHSS(self, benchmarks):
+        lowestA = benchmarks[0]
+        lowestI = benchmarks[1]
+        minForce = benchmarks[2]
+        slenderness = benchmarks[3]
+        # Square therefore one dim var
+        thick = 6.35
+        outer = 350
+        while True:
+            outer = outer + thick
+            inner = outer - 2*thick
+            area = outer*outer - inner*inner
+            inert = ((outer*outer*outer*outer) - (inner*inner*inner*inner))/12
+            if area >= lowestA and inert >= lowestI:
+                slend = mh.sqrt(inert/area)
+                if minForce >= 0:
+                    if slend > slenderness:
+                        break
+                else:
+                    break
+        # Generate HSS vals
+        designation = str(int(outer)) + "x" + str(int(outer)) + "x" + str(int(thick))
+        size = str(round(outer, 2)) + "x" + str(round(outer, 2)) + "x" + str(thick)
+        w = 77*(area/(1000*1000))  # All steel
+        m = (w*1000)/9.81
+        customVals = designation + " " + size + " " + str(m) + " " + str(w) + " " + str(area) + " " + str(inert) + " " + "0" + " " + str(slend)
+        self.structure = HSS(customVals)
+        return True
 
 def checkUnique(list, value):
     for val in list:
@@ -413,7 +419,12 @@ class Truss:
 
     def display(self):
         for m in self.members:
-            print(m.id, "-->", slideRuleAccuracy(m.force), "(" + m.structure.size + ")")
+            stru = "Unset"
+            try:
+                stru = m.structure.size
+            except:
+                pass
+            print(m.id, "-->", slideRuleAccuracy(m.force), "(" + stru + ")")
         return True
 
     def getAnswerForces(self):
@@ -421,7 +432,7 @@ class Truss:
         if not self.forcesCalced:
             for m in self.members:
                 if m.answerForm is False:
-                    m.force = m.force * -1
+                    # m.force = m.force * -1
                     m.answerForm = True
                     #print(m.force)
         self.forcesCalced = True
@@ -492,12 +503,14 @@ class Truss:
                 webLength = m.duplicate()
         # Get force signs
         # Set top, bottom and web HSSs
+        webMs = []
         anti = True if incrChords is False else False
         for m in self.members:
             set = False
             for id in bottomChordIds:
                 if m.id == id:
                     m.pickHSS(HSSList, botForce, botLength, incrChords)
+                    chordy = m
                     set = True
                     break
             if set:
@@ -512,28 +525,45 @@ class Truss:
                 continue
             # Selects HSS for the web forces
             m.pickHSS(HSSList, webForce, webLength, anti)
+            webMs = webMs + [m.id]
             webx = m
         # Check HSS relativity (if chords are smaller than web, increase chords to match web)
-        chordSize = chordx.structure.size.split('x')
+        chordSizeT = chordx.structure.size.split('x')
+        chordSizeB = chordy.structure.size.split('x')
         webSize = webx.structure.size.split('x')
-        if float(webSize[0]) > float(chordSize[0]) or float(webSize[2]) > float(chordSize[2]):
+        # Find Smallest
+        targ = 1
+        fin = 0
+        current = chordSizeT
+        for siz in [chordSizeB, webSize]:
+            if (float(current[0]) > float(siz[0])) and (float(current[2]) > float(siz[2])):
+                current = siz
+                fin = targ
+            targ = targ + 1
+        if fin == 0:
+            targetMems = topChordIds
+        elif fin == 1:
+            targetMems = bottomChordIds
+        else:
+            targetMems = webMs
+        # Add incrementation to smallest
+        for m in self.members:
+            for id in targetMems:
+                m.structureIteration = m.structureIteration + 1
+        # Manage Top Chord
+        if float(webSize[0]) > float(chordSizeT[0]) or float(webSize[2]) > float(chordSizeT[2]):
             for m in self.members:
-                set = False
+                for id in topChordIds:
+                    if m.id == id:
+                        # print(m.id)
+                        m.pickHSS(HSSList, webForce, webLength, anti)
+                        #print(m.structure.size)
+        # Manage Bottom Chord
+        if float(webSize[0]) > float(chordSizeB[0]) or float(webSize[2]) > float(chordSizeB[2]):
+            for m in self.members:
                 for id in bottomChordIds:
                     if m.id == id:
                         m.pickHSS(HSSList, webForce, webLength, anti)
-                        set = True
-                        break
-                if set:
-                    continue
-                for id in topChordIds:
-                    if m.id == id:
-                        m.pickHSS(HSSList, webForce, webLength, anti)
-                        chordx = m
-                        set = True
-                        break
-                if set:
-                    continue
         for m in self.members:
             m.calculateLengthChange()  # this is appropriate as it is calculated based on HSS
         # Calculate total loading with new HSSs
@@ -754,7 +784,13 @@ def slideRuleAccuracy(value):
         type = float
     # Add values back
     if is0Dec:
-        final = "0." + zeros + final
+        final = "0." + zeros + str(final)
+    if len(str(final).split('.')) > 2:
+        f = str(final).split('.')[0:2]
+        finalS = ""
+        for i in f:
+            finalS = finalS + i
+        final = float(finalS)
     # Cast to Type
     if type == int:
         result = int(final)
@@ -809,9 +845,10 @@ def test():
         HSSs = HSSs + [HSS(line)]
     x = Member.dummy()
     x.length = 10.56
-    x.force = -186
+    x.force = -10000
     x.answerForm = True
     x.pickHSS(HSSs)
+    print(x.structure.size)
     return True
 
-#test()
+# test()

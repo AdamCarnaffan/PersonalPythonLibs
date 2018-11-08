@@ -210,7 +210,7 @@ def main():
                         join[id] = '0'
                     id = id + 1
             lowerPoints = stripZeros(join)
-            loadPerPoint = slideRuleAccuracy(loading.getTotal()/len(lowerPoints))
+            loadPerPoint = slideRuleAccuracy(loading.getTotal())
             ind = 0
             for f in force:
                 for j in lowerPoints:
@@ -243,6 +243,8 @@ def main():
         # print(l.jointB.x, l.jointB.y)
         # print(l.force)
         # break
+        # truss.display()
+        # sys.exit()
         # Build list of HSSs
         HSSFile = open('fixedData\\HSSData.txt', 'r')
         HSSData = HSSFile.readlines()
@@ -250,10 +252,12 @@ def main():
         for line in HSSData:
             HSSs = HSSs + [HSS(line)]
         # prevLoad = loading.getTotal()
+        print("STATE IS", fullPass)
         if not fullPass:
-            loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('upper'), toggleUptick))
+            loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('height'), toggleUptick))
         else:
             truss.connectHSSs(prevState)
+        print("Picked HSSs")
         # b = truss.getMemberByID(1)
         # b.dispMatrix.display()
         # b.stiffnessMatrix.display()
@@ -293,8 +297,9 @@ def main():
         # virtualTruss.display()
         # 0.0071784033525843245
         visualDisp = abs(truss.getDeltaR(virtualTruss))/(bottomSpanLength)
-        if visualDisp > 1/400:
+        if visualDisp > 1/350:
             # Must recalculate
+            print("Failed Visual", visualDisp)
             fullPass = False
             continue
         print(visualDisp)
@@ -319,7 +324,7 @@ def main():
         df = 0.5*(loading.getLiveWeight()/loading.getSelfWeight())*visualDisp
         maxDisp = visualDisp + (DAF*df)
         print(maxDisp)
-        if maxDisp > 1/400:
+        if maxDisp > 1/350:
             # Must recalculate
             fullPass = False
             continue
@@ -327,10 +332,32 @@ def main():
         if fullPass:
             break
         fullPass = True
+        print("Made full pass")
+        truss.display()
         # Save previous HSSs for verification
         prevState = []
         for m in truss.members:
             prevState = prevState + [[m.id, m.structure]]
+    print("----FINAL-----")
+    truss.compileDofs()
+    restrictedDegrees = []
+    for r in restrict:
+        if r[1] == "xy":
+            restrictedDegrees = restrictedDegrees + [int(r[0])]
+            restrictedDegrees = restrictedDegrees + [int(r[0]) + 1]
+        elif r[1] == "x":
+            restrictedDegrees = restrictedDegrees + [int(r[0])]
+        elif r[1] == "y":
+            restrictedDegrees = restrictedDegrees + [int(r[0]) + 1]
+    for r in restrictedDegrees:
+        for d in truss.DOFs:
+            if d.id == r:
+                l = r
+                v = "x"
+                if r % 2 == 1:
+                    l = l + 1
+                    v = "y"
+                print("Point @", l/2, "has force", d.force, "in the", v)
     print("LOAD OF", str(loading.getTotal()) + "kN (Distrubuted evenly between loading points)")
     truss.display()
     return True
