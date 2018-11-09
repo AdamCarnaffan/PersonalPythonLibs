@@ -219,6 +219,7 @@ class Member:
             return -x.mass
         reduced = sorted(possible, key = HSSSort)
         self.structure = reduced[len(reduced) - (1+self.structureIteration)]
+        self.structure.isCustom = False
         return True
 
 
@@ -249,6 +250,7 @@ class Member:
         m = (w*1000)/9.81
         customVals = designation + " " + size + " " + str(m) + " " + str(w) + " " + str(area) + " " + str(inert) + " " + "0" + " " + str(slend)
         self.structure = HSS(customVals)
+        self.structure.isCustom = True
         return True
 
 def checkUnique(list, value):
@@ -557,7 +559,7 @@ class Truss:
                     if m.id == id:
                         # print(m.id)
                         m.pickHSS(HSSList, webForce, webLength, anti)
-                        #print(m.structure.size)
+                        # print(m.structure.size)
         # Manage Bottom Chord
         if float(webSize[0]) > float(chordSizeB[0]) or float(webSize[2]) > float(chordSizeB[2]):
             for m in self.members:

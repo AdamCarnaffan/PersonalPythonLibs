@@ -258,6 +258,7 @@ def main():
         else:
             truss.connectHSSs(prevState)
         print("Picked HSSs")
+        # break
         # b = truss.getMemberByID(1)
         # b.dispMatrix.display()
         # b.stiffnessMatrix.display()
@@ -307,6 +308,10 @@ def main():
         # Create a truss with the oscillatory load
         distrib = 17.75
         selfFreq = distrib/mh.sqrt(loading.getSelfWeight())
+        if selfFreq < 2.1 and selfFreq > 1.9:
+            # Must recalculate
+            fullPass = False
+            continue
         maxFreq = 2.0
         DAF = 1/(1+(maxFreq/selfFreq))
         # maxTruss = Truss(joints, members)
@@ -338,27 +343,19 @@ def main():
         prevState = []
         for m in truss.members:
             prevState = prevState + [[m.id, m.structure]]
-    print("----FINAL-----")
+    print("-----RESULT-----")
     truss.compileDofs()
-    restrictedDegrees = []
-    for r in restrict:
-        if r[1] == "xy":
-            restrictedDegrees = restrictedDegrees + [int(r[0])]
-            restrictedDegrees = restrictedDegrees + [int(r[0]) + 1]
-        elif r[1] == "x":
-            restrictedDegrees = restrictedDegrees + [int(r[0])]
-        elif r[1] == "y":
-            restrictedDegrees = restrictedDegrees + [int(r[0]) + 1]
-    for r in restrictedDegrees:
-        for d in truss.DOFs:
-            if d.id == r:
-                l = r
-                v = "x"
-                if r % 2 == 1:
-                    l = l + 1
-                    v = "y"
-                print("Point @", l/2, "has force", d.force, "in the", v)
-    print("LOAD OF", str(loading.getTotal()) + "kN (Distrubuted evenly between loading points)")
+    cost = 0
+    for m in truss.members:
+        if m.structure.isCustom:
+            mn = m.structure.deadLoad / 9.81
+            cost = cost + mn*m.length*4
+        else:
+            cost = cost + m.structure.mass*m.length*3
+    for j in truss.joints:
+        cost = cost + 750
+    print("LOAD OF", str(loading.getTotal()) + "kN (per loading point)")
+    print("TOTAL COST OF $" + str(cost))
     truss.display()
     return True
 
