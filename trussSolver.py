@@ -225,8 +225,11 @@ def main():
                         if len(f) == 2:
                             force[ind] = force[ind] + [0]
                         # Now we have y for sure
-                        force[ind][2] = loadPerPoint
+                         # Y is negative for gravity
+                        force[ind][2] = -loading.getTotal()
                 ind = ind + 1
+        print("Applying theses forces")
+        print(force)
         for f in force:
             val = 0 if len(f) == 2 else f[2]
             truss.fetchJoint(f[0]).setForce(f[1], val)
@@ -286,7 +289,7 @@ def main():
                 if f[0] != pointOfDeflection:
                     val = 0
                 else:
-                    val = 1
+                    val = -1
             virtualTruss.fetchJoint(f[0]).setForce(f[1], val)
         # for j in virtualTruss.joints:
         #     print(j.DOFs[0].disp)
@@ -337,6 +340,7 @@ def main():
         if fullPass:
             break
         fullPass = True
+        print("LOAD OF", str(loading.getTotal()) + "kN (per loading point)")
         print("Made full pass")
         truss.display()
         # Save previous HSSs for verification

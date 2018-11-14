@@ -434,7 +434,7 @@ class Truss:
         if not self.forcesCalced:
             for m in self.members:
                 if m.answerForm is False:
-                    # m.force = m.force * -1
+                    m.force = m.force * -1
                     m.answerForm = True
                     #print(m.force)
         self.forcesCalced = True
