@@ -1,4 +1,12 @@
 import math as mh
+import time
+import numpy as np
+
+def getTime(s):
+    print("--- %s seconds ---" % (time.time() - s))
+    return time.time() - s
+
+ssss = time.time()
 
 
 def translateMathIndexToCode(ind):
@@ -333,6 +341,9 @@ class Matrix:
     def invert(self):
         if self.rows != self.cols:
             return False
+        # We're cheating because my functions are horribly inefficient
+        self.M = np.linalg.inv(self.M)
+        return True
         # Get the determinant
         determinant = self.getDeterminant()
         if determinant == 0:
@@ -369,7 +380,7 @@ class Matrix:
     def cofactor(self):  # Only for square matricies
         if self.rows != self.cols:
             return False
-        # If its has a determinant, compute!
+        # If it has a determinant, compute!
         if self.rows == 2:
             dup = self.duplicate()
             self.M[0][0] = dup.M[1][1]
@@ -395,11 +406,6 @@ class Matrix:
                         tempR = tempR + row[0:c]
                         tempR = tempR + row[c+1:self.cols]
                         miniM = miniM + [tempR]
-                    # if (r == 0) and c == 1:
-                    #     x = Matrix(miniM)
-                    #     x.display()
-                    #     print(x.M)
-                    #     print(x.getDeterminant())
                     if (c+r) % 2 == 0:
                         val = Matrix(miniM).getDeterminant()
                     else:
@@ -435,31 +441,31 @@ class Matrix:
         self.rowLabels[r2] = rowL1
         return True
 
-    def getREF(self):
-        # dup = self.duplicate()
-        # start = 1
-        # swaps = 0
-        # for c in range(0, dup.cols-1, 1):
-        #     i = 0
-        #     while True:
-        #         if dup.M[start - 1][c] == 0:
-        #             if (start + i >= self.rows):
-        #                 return c # Rows = cols
-        #             dup.swapRows(start-1, start + i)
-        #             swaps = swaps + 1
-        #             i = i + 1
-        #         else:
-        #             break
-        #     row = Matrix([dup.M[start - 1]])
-        #     for r in range(start, dup.rows, 1):
-        #         currentValue = dup.getValue(r, c)
-        #         rowDupe = row.duplicate()
-        #         rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
-        #         dup.modifyRowAdd(r, rowDupe.M[0])
-        #     start = start + 1
-        # dup.swaps = swaps
-        dup = self.duplicate()
-        return dup
+    # def getREF(self):
+    #     dup = self.duplicate()
+    #     start = 1
+    #     swaps = 0
+    #     for c in range(0, dup.cols-1, 1):
+    #         i = 0
+    #         while True:
+    #             if dup.M[start - 1][c] == 0:
+    #                 if (start + i >= self.rows):
+    #                     return c # Rows = cols
+    #                 dup.swapRows(start-1, start + i)
+    #                 swaps = swaps + 1
+    #                 i = i + 1
+    #             else:
+    #                 break
+    #         row = Matrix([dup.M[start - 1]])
+    #         for r in range(start, dup.rows, 1):
+    #             currentValue = dup.getValue(r, c)
+    #             rowDupe = row.duplicate()
+    #             rowDupe.scale(-(currentValue/rowDupe.M[0][c]))
+    #             dup.modifyRowAdd(r, rowDupe.M[0])
+    #         start = start + 1
+    #     dup.swaps = swaps
+    #     dup = self.duplicate()
+    #     return dup
 
     def cutMatrix(self, step):
         # cuts the first values in row and column by number of steps
@@ -473,10 +479,13 @@ class Matrix:
             dup.cols = dup.cols - 1
         return dup
 
-    def geFwdStep(self):
+    def geFwd(self):
         dup = self.duplicate()
         dup.swaps = 0
         #print(dup.M[12])
+        print("ASD")
+        getTime(ssss)
+        print(str(dup.rows))
         for r in range(0, dup.rows, 1):
             # Make sure first is non-zero row
             if dup.M[r][r] == 0:
@@ -513,6 +522,7 @@ class Matrix:
                     dup.bumpRow(ind)
                 ind = ind + 1
             #print(dup.M[len(dup.M)-1])
+        getTime(ssss)
         return dup
 
     def checkZeroRow(self, row):
@@ -530,41 +540,31 @@ class Matrix:
         self.rowLabels = self.rowLabels[0:row] + self.rowLabels[row+1:len(self.rowLabels)] + [self.rowLabels[row]]
         return True
 
+    def getMinor(self, r, c):
+        return Matrix(list(row[0:c] + row[c+1:self.cols] for row in (self.M[0:r] + self.M[r+1:self.rows])))
+
     def getDeterminant(self):
         if self.rows != self.cols:
             return False
         # If is has a determinant, compute!
         if self.rows == 2:
             return self.M[0][0]*self.M[1][1] - self.M[0][1]*self.M[1][0]
+        # else:
+        #     i = 0
+        #     ref = self.geFwd()
+        #     if ref == False:
+        #         print(self.M)
+        #     det = 1
+        #     for r in range(0, ref.rows, 1):
+        #         det = det * ref.getValue(r, r)
+        #     if ref.swaps % 2 != 0:
+        #         det = det * -1
+        #     return det
         else:
-            i = 0
-            ref = self.geFwdStep()
-            if ref == False:
-                print(self.M)
-            det = 1
-            for r in range(0, ref.rows, 1):
-                det = det * ref.getValue(r, r)
-            if ref.swaps % 2 != 0:
-                det = det * -1
+            det = 0
+            for c in range(0, self.cols, 1):
+                det = det + ((-1)**c)*self.M[0][c]*(self.getMinor(0,c)).getDeterminant()
             return det
-            # targetRows = self.M[1:self.rows]
-            # det = 0
-            # for i in range(0, self.cols, 1):
-            #     # Generate mini target list
-            #     miniM = []
-            #     # Remove the column that is related to the current column
-            #     for row in targetRows:
-            #         tempR = []
-            #         tempR = tempR + row[0:i]
-            #         tempR = tempR + row[i+1:self.cols]
-            #         miniM = miniM + [tempR]
-            #     # Get determinant using mini lists
-            #     tempDet = self.M[0][i]*Matrix(miniM).getDeterminant()
-            #     if i % 2 == 0:
-            #         det = det + tempDet
-            #     else:
-            #         det = det - tempDet
-            # return det
 
 
 class Vector:
@@ -598,12 +598,6 @@ class Point:
 
 
 def Test():
-    # x = [[0.0, 0.21831211818518204, 0.0, -0.18518518518518517, 0.0, 0.0, 0.03312693299999688, -0.01656346649999844, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.18518518518518517, 0.0, 0.0, 0.0, -0.09259259259259259, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, -0.18518518518518517, 0.0, 0.18518518518518517, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [-0.09259259259259259, 0.0, 0.0, 0.0, 0.1851851851851852, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.18518518518518517, 0.0, -0.18518518518518517, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [-0.06625386599999376, 0.03312693299999688, -0.09259259259259259, 0.0, 0.0, 0.0, 0.31769291718517273, 0.0, -0.06625386599999378, -0.033126932999996896, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.03312693299999688, -0.01656346649999844, 0.0, 0.0, 0.0, -0.18518518518518517, 0.0, 0.21831211818518206, -0.033126932999996896, -0.01656346649999845, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, -0.06625386599999378, -0.033126932999996896, 0.3176929171851727, 0.0, 0.0, 0.0, -0.09259259259259256, -0.06625386599999374, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.033126932999996896, -0.01656346649999845, 0.0, 0.21831211818518206, 0.0, -0.18518518518518517, 0.0, 0.03312693299999686, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.18518518518518517, 0.0, 0.0, -0.09259259259259256, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.18518518518518517, 0.0, 0.18518518518518517, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259256, 0.0, 0.0, 0.0, 0.18518518518518517, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.06625386599999374, 0.03312693299999686, -0.09259259259259256, 0.0, 0.0, 0.3176929171851727, -0.06625386599999378, -0.033126932999996896, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, -0.06625386599999378, 0.3176929171851728, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, -0.06625386599999378, 0.033126932999996896, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.033126932999996896, 0.0, 0.2183121181851821, 0.0, -0.18518518518518517, 0.0, 0.0, 0.033126932999996896, -0.01656346649999845, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.18518518518518523, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.18518518518518517, 0.0, 0.18518518518518517, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.18518518518518523, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.18518518518518517, 0.0, -0.18518518518518517, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.06625386599999378, 0.033126932999996896, -0.09259259259259262, 0.0, 0.0, 0.0, 0.3176929171851728, 0.0, -0.06625386599999378, -0.033126932999996896, -0.09259259259259262, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.033126932999996896, -0.01656346649999845, 0.0, 0.0, 0.0, -0.18518518518518517, 0.0, 0.2183121181851821, -0.033126932999996896, -0.01656346649999845, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, -0.06625386599999378, -0.033126932999996896, 0.22510032459258011, 0.0, 0.0, 0.0, -0.06625386599999374], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.033126932999996896, -0.01656346649999845, 0.0, 0.21831211818518204, 0.0, -0.18518518518518517, 0.03312693299999684], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.09259259259259262, 0.0, 0.0, 0.0, 0.18518518518518512, 0.0, -0.09259259259259249], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.18518518518518517, 0.0, 0.18518518518518517, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.06625386599999374, 0.03312693299999684, -0.09259259259259249, 0.0, 0.15884645859258623]]
-    # l = Matrix(x)
-    # l.display()
-    # l.setDataType('float')
-    # l.geFwdStep().display()
-    #l.display()
-    print(int(1))
+    return True
     
 #Test()

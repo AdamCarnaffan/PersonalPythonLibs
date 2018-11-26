@@ -3,6 +3,12 @@
 from personalMathLib import Matrix, Point
 import math as mh
 import sys
+import time
+
+def getTime(s):
+    print("--- %s seconds ---" % (time.time() - s))
+
+ssss = time.time()
 
 # Global Young's modulos
 E = 200000
@@ -231,6 +237,7 @@ class Member:
         # Square therefore one dim var
         thick = 6.35
         outer = 350
+        iter = 0;
         while True:
             outer = outer + thick
             inner = outer - 2*thick
@@ -240,7 +247,11 @@ class Member:
                 slend = mh.sqrt(inert/area)
                 if minForce >= 0:
                     if slend > slenderness:
-                        break
+                        if (iter < self.structureIteration):
+                            iter = iter + 1
+                            continue
+                        else:    
+                            break
                 else:
                     break
         # Generate HSS vals
@@ -250,6 +261,7 @@ class Member:
         m = (w*1000)/9.81
         customVals = designation + " " + size + " " + str(m) + " " + str(w) + " " + str(area) + " " + str(inert) + " " + "0" + " " + str(slend)
         self.structure = HSS(customVals)
+        # self.structureIteration = self.structureIteration + 1
         self.structure.isCustom = True
         return True
 
@@ -337,7 +349,7 @@ class Truss:
         disps = []
         dispLabels = []
         for u in knownDisps:
-            disps = disps + [u.disp]
+            disps = disps + [[u.disp]]
             dispLabels = dispLabels + [u.id]
         dispMatrix = Matrix(disps, dispLabels)
         # dispMatrix.display()
@@ -530,18 +542,33 @@ class Truss:
             webMs = webMs + [m.id]
             webx = m
         # Check HSS relativity (if chords are smaller than web, increase chords to match web)
-        chordSizeT = chordx.structure.size.split('x')
-        chordSizeB = chordy.structure.size.split('x')
+        chordSizeT = None
+        chordSizeB = None
+        if (len(topChordIds) > 0 and topChordIds != bottomChordIds): # Only use bottom chord IDs if they match
+            print(bottomChordIds)
+            chordSizeT = chordx.structure.size.split('x')
+        if (len(bottomChordIds) > 0):
+            chordSizeB = chordy.structure.size.split('x')
         webSize = webx.structure.size.split('x')
         # Find Smallest
-        targ = 1
+        targ = None
+        # targ = 1
+        # fin = 0
+        # current = chordSizeT if chordSizeT != None else [0,0,0]
+        iter = -1
         fin = 0
-        current = chordSizeT
-        for siz in [chordSizeB, webSize]:
-            if (float(current[0]) > float(siz[0])) and (float(current[2]) > float(siz[2])):
-                current = siz
-                fin = targ
-            targ = targ + 1
+        for siz in [chordSizeT, chordSizeB, webSize]:
+            iter = iter + 1
+            if targ == None:
+                targ = siz
+                continue
+            elif siz == None:
+                continue
+            elif (float(targ[0]) > float(siz[0])) and (float(targ[2]) > float(siz[2])):
+                targ[0] = siz[0]
+                targ[2] = siz[2]
+                fin = iter
+        # Determine smallest members to target
         if fin == 0:
             targetMems = topChordIds
         elif fin == 1:
@@ -553,7 +580,7 @@ class Truss:
             for id in targetMems:
                 m.structureIteration = m.structureIteration + 1
         # Manage Top Chord
-        if float(webSize[0]) > float(chordSizeT[0]) or float(webSize[2]) > float(chordSizeT[2]):
+        if chordSizeT != None and (float(webSize[0]) > float(chordSizeT[0]) or float(webSize[2]) > float(chordSizeT[2])):
             for m in self.members:
                 for id in topChordIds:
                     if m.id == id:
@@ -561,7 +588,7 @@ class Truss:
                         m.pickHSS(HSSList, webForce, webLength, anti)
                         # print(m.structure.size)
         # Manage Bottom Chord
-        if float(webSize[0]) > float(chordSizeB[0]) or float(webSize[2]) > float(chordSizeB[2]):
+        if chordSizeB != None and (float(webSize[0]) > float(chordSizeB[0]) or float(webSize[2]) > float(chordSizeB[2])):
             for m in self.members:
                 for id in bottomChordIds:
                     if m.id == id:
@@ -597,11 +624,13 @@ class Truss:
 class Joint(Point):
 
     def __init__(self, point, DOFids):
+        # print(DOFids)
         super(Joint, self).__init__(point.x, point.y, point.designation)
         self.DOFs = [DOF(DOFids[0]), DOF(DOFids[1])]  # 0 is x, 1 is y
+        # print(self.DOFs[0].id)
 
     def dummy():
-        dum = Joint(Point(0, 0), [DOF(0), DOF(0)])
+        dum = Joint(Point(0, 0), [0, 0])
         dum.setForce('xy', 0)
         dum.setDisp('xy', 0)
         return dum
@@ -640,7 +669,9 @@ class Joint(Point):
         dof = []
         for d in self.DOFs:
             dof = dof + [d.duplicate()]
-        newJ = Joint(Point(self.x, self.y, self.designation), dof)
+        newJ = Joint(Point(self.x, self.y, self.designation), [dof[0].id, dof[1].id])
+        newJ.DOFs[0] = self.DOFs[0].duplicate()
+        newJ.DOFs[1] = self.DOFs[1].duplicate()
         return newJ
 
     def applyDisp(self):
@@ -680,130 +711,210 @@ class Variable:
         self.val = float(value)
 
 
-def getSlideValue(strVal, leng):
-    type = int
-    final = ''
-    x = 0
-    followsPoint = False
-    # Check if there is a decimal in the range
-    for i in range(0, leng, 1):
-        if i >= len(strVal):
-            break # Exit early if done
-        if strVal[i] == '.':
-            leng = leng + 1
-            break
-    for i in range(0, leng, 1):
-        if followsPoint:
-            followsPoint = False
-            continue
-        if i >= len(strVal):
-            return [final, type] # Exit early if done
-        if strVal[i] == '.':
-            final = final + "." + strVal[i + 1]
-            followsPoint = True
-            x = 1
-            type = float
-        else:
-            final = final + strVal[i]
-    i = i + 1
-    if i + 1 >= len(strVal):
-        return [final, type] # Exit early if done now
-    # Check for rounding
-    # Get rounded value
-    z = 1
-    passDec = False
-    l = 0
-    while True:
-        if final[len(final)-z] == '.':
-            z = z + 1
-            passDec = True
-            l = 2
-            continue
-        roundVal = int(final[len(final)-z]) + 1
-        if passDec:
-            l = l + 1
-        if (len(str(roundVal)) > z):
-            z = z + 1
-        else:
-            roundVal = roundVal * mh.pow(10, z-l)
-            break
-    roundVal = int(roundVal)
-    if final[len(final)-z-1] == '.':
-        strip = int(float(final[0:len(final)-z] + str(0)))
-    else:
-        strip = int(float(final[0:len(final)-z]))
-    valsToSize = 0
-    temp = strip
-    if float(final) > 1:
-        while temp < float(final):
-            valsToSize = valsToSize + 1
-            temp = temp * mh.pow(10, valsToSize)
-    # Else we gotta do a decimal thing
-    strip = strip * mh.pow(10, valsToSize-1)
-    if strVal[i] != '.' and int(strVal[i]) > 4:
-        final = strip + roundVal
-    elif strVal[i] == '.' and int(strVal[i+1]) > 4:
-        roundVal = int(roundVal / 10)
-        final = strip + roundVal
-    return [final, type]
+# def getSlideValue(strVal, leng):
+#     type = int
+#     final = ''
+#     x = 0
+#     followsPoint = False
+#     # Check if there is a decimal in the range
+#     for i in range(0, leng, 1):
+#         if i >= len(strVal):
+#             break # Exit early if done
+#         if strVal[i] == '.':
+#             leng = leng + 1
+#             break
+#     for i in range(0, leng, 1):
+#         if followsPoint:
+#             followsPoint = False
+#             continue
+#         if i >= len(strVal):
+#             return [final, type] # Exit early if done
+#         if strVal[i] == '.':
+#             final = final + "." + strVal[i + 1]
+#             followsPoint = True
+#             x = 1
+#             type = float
+#         else:
+#             final = final + strVal[i]
+#     i = i + 1
+#     if i + 1 >= len(strVal):
+#         return [final, type] # Exit early if done now
+#     # Check for rounding
+#     # Get rounded value
+#     z = 1
+#     passDec = False
+#     l = 0
+#     while True:
+#         if final[len(final)-z] == '.':
+#             z = z + 1
+#             passDec = True
+#             l = 2
+#             continue
+#         roundVal = int(final[len(final)-z]) + 1
+#         if passDec:
+#             l = l + 1
+#         if (len(str(roundVal)) > z):
+#             z = z + 1
+#         else:
+#             roundVal = roundVal * mh.pow(10, z-l)
+#             break
+#     roundVal = int(roundVal)
+#     if final[len(final)-z-1] == '.':
+#         strip = int(float(final[0:len(final)-z] + str(0)))
+#     else:
+#         strip = int(float(final[0:len(final)-z]))
+#     valsToSize = 0
+#     temp = strip
+#     if float(final) > 1:
+#         while temp < float(final):
+#             valsToSize = valsToSize + 1
+#             temp = temp * mh.pow(10, valsToSize)
+#     # Else we gotta do a decimal thing
+#     strip = strip * mh.pow(10, valsToSize-1)
+#     if strVal[i] != '.' and int(strVal[i]) > 4:
+#         final = strip + roundVal
+#     elif strVal[i] == '.' and int(strVal[i+1]) > 4:
+#         roundVal = int(roundVal / 10)
+#         final = strip + roundVal
+#     return [final, type]
 
 
 def slideRuleAccuracy(value):
-    # No need to convert a 0
-    val = value
-    if val == 0:
+    if (value < 1e-12 and value > 0) or value == 0 or (value > -1e-12 and value < 0):
         return 0
-    conv = False
-    if val < 0.0000000001 and val > 0:
-        val = val * 10000000000
-        conv = True
-    type = int
-    strVal = str(val)
-    is0Dec = False
+    val = value
+    # Filter out the negative
     neg = False
-    if (val < 0):
-        strVal = strVal[1:len(strVal)]
+    if val < 0:
+        val = val * -1
         neg = True
-    if (val < 1) and (val > -1):
-        type = float
-        strVal = strVal[2:len(strVal)] # remove the 0.
-        is0Dec = True
-    # Remove leading 0s
-    zeros = ''
-    for v in strVal:
-        if v == '0':
-            zeros = zeros + '0'
-        else:
+    # Remove trailng zeros in large number
+    trailTally = 0
+    strVal = str(val)
+    init = val
+    if val > 1e4:
+        # Handle value in scientific form
+        sci = 4
+        if len(strVal.split("e")) > 1:
+            sci = int(strVal.split("e")[1])
+            strVal = strVal.split("e")[0] + "0000"
+        cut = (strVal[5:len(strVal)]).split(".")[0]
+        trailTally = len(cut) + sci - 4
+        strVal = strVal[0:5]
+        val = int(strVal)
+    # Remove leading zeros
+    zeroTally = 0
+    strVal = str(val)
+    if (val < 1 and val > 0):
+        # Handle value in scientific form
+        sci = 4
+        if len(strVal.split("e")) > 1:
+            sci = int(strVal.split("e-")[1])
+            strVal = "0.000" + strVal.split("e")[0]
+        ind = 0
+        for num in strVal:
+            if num == "0":
+                zeroTally = zeroTally + 1
+            elif num == ".":
+                pass
+            else:
+                break
+            ind = ind + 1
+        strVal = strVal[ind:len(strVal)]
+        val = float(strVal)
+        zeroTally = zeroTally + sci - 4
+    # Break and round
+    finalLen = 4 if strVal[0] == "1" else 3
+    # Make integer for adjustments
+    while int(val) != float(val):
+        if len(str(int(val))) > 6:
+            val = int(str(val).split(".")[0])
             break
-    strVal = strVal[len(zeros):len(strVal)]
-    # Use slide rule on sig digs
-    if (strVal[0] == '1'):
-        res = getSlideValue(strVal, 4)
-    else:
-        res = getSlideValue(strVal, 3)
-    final = res[0]
-    if res[1] == float:
-        type = float
-    # Add values back
-    if is0Dec:
-        final = "0." + zeros + str(final)
-    if len(str(final).split('.')) > 2:
-        f = str(final).split('.')[0:2]
-        finalS = ""
-        for i in f:
-            finalS = finalS + i
-        final = float(finalS)
-    # Cast to Type
-    if type == int:
-        result = int(final)
-    else:
-        result = float(final)
-    if conv:
-        result = result / 10000000000
-    if neg:
-        return -result
-    else:
-        return result
+        val = val * 10
+        zeroTally = zeroTally + 1
+    strVal = str(val)
+    # Do rounding
+    if len(strVal) > finalLen and int(strVal[finalLen]) > 4:
+        for pos in range(finalLen - 1, -2, -1):
+            if pos == -1:
+                strVal = "1" + strVal
+                break
+            if int(strVal[pos]) == 9:
+                strVal = strVal[0:pos] + "0" + strVal[pos+1:len(strVal)]
+            else:
+                strVal = strVal[0:pos] + str(int(strVal[pos]) + 1) + strVal[pos+1:len(strVal)]
+                break
+    val = float(strVal[0:finalLen])
+    # Check for removed places
+    testStr = str(val).split(".")[0]
+    if (len(testStr) < len(strVal)) and init > 1:
+        trailTally = trailTally + len(strVal) - len(testStr)
+    # Adjust for added places
+    if int(str(val).split(".")[1]) > 0:
+        zeroTally = zeroTally + finalLen - 1 if finalLen < len(strVal) else zeroTally + len(strVal) - 1
+    proper = val
+    proper = float(str(proper) + "e" + str(trailTally))
+    proper = float(str(proper) + "e-" + str(zeroTally))
+    # Cut value again for problems with pow
+    return proper if not neg else -proper
+
+
+# def slideRuleAccuracy(value):
+#     # No need to convert a 0
+#     val = value
+#     if val == 0:
+#         return 0
+#     conv = False
+#     if val < 0.0000000001 and val > 0:
+#         val = val * 10000000000
+#         conv = True
+#     type = int
+#     strVal = str(val)
+#     is0Dec = False
+#     neg = False
+#     if (val < 0):
+#         strVal = strVal[1:len(strVal)]
+#         neg = True
+#     if (val < 1) and (val > -1):
+#         type = float
+#         strVal = strVal[2:len(strVal)] # remove the 0.
+#         is0Dec = True
+#     # Remove leading 0s
+#     zeros = ''
+#     for v in strVal:
+#         if v == '0':
+#             zeros = zeros + '0'
+#         else:
+#             break
+#     strVal = strVal[len(zeros):len(strVal)]
+#     # Use slide rule on sig digs
+#     if (strVal[0] == '1'):
+#         res = getSlideValue(strVal, 4)
+#     else:
+#         res = getSlideValue(strVal, 3)
+#     final = res[0]
+#     if res[1] == float:
+#         type = float
+#     # Add values back
+#     if is0Dec:
+#         final = "0." + zeros + str(final)
+#     if len(str(final).split('.')) > 2:
+#         f = str(final).split('.')[0:2]
+#         finalS = ""
+#         for i in f:
+#             finalS = finalS + i
+#         final = float(finalS)
+#     # Cast to Type
+#     if type == int:
+#         result = int(final)
+#     else:
+#         result = float(final)
+#     if conv:
+#         result = result / 10000000000
+#     if neg:
+#         return -result
+#     else:
+#         return result
 
 
 def interpVar(value, variables):
@@ -840,17 +951,6 @@ def subtract(oldStr, sub):
 
 
 def test():
-    HSSFile = open('fixedData\\HSSData.txt', 'r')
-    HSSData = HSSFile.readlines()
-    HSSs = []
-    for line in HSSData:
-        HSSs = HSSs + [HSS(line)]
-    x = Member.dummy()
-    x.length = 10.56
-    x.force = -10000
-    x.answerForm = True
-    x.pickHSS(HSSs)
-    print(x.structure.size)
     return True
 
 # test()

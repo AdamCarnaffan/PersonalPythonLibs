@@ -165,7 +165,7 @@ def main():
     joints = []
     i = 1
     for p in points:
-        joints = joints + [Joint(p, [i*2-1, i*2])]
+        joints = joints + [Joint(p, [(i*2)-1, i*2])]
         i = i + 1
     # members = [Member(1,2,1), Member(1,3,2), Member(2,3,3), Member(2,4,4), Member(3,4,5), Member(3,5,6), Member(4,5,7)]
     # restrict = [[1, 'xy'], [5, 'y']]  # Disp is set 0
@@ -174,6 +174,7 @@ def main():
     # deflectionSpan = [1,5] # Members from and to
     loading = Load(loads)
     toggleUptick = True
+    isEstimation = True
     established = False
     fullPass = False
     prevState = []
@@ -228,8 +229,6 @@ def main():
                          # Y is negative for gravity
                         force[ind][2] = -loading.getTotal()
                 ind = ind + 1
-        print("Applying theses forces")
-        print(force)
         for f in force:
             val = 0 if len(f) == 2 else f[2]
             truss.fetchJoint(f[0]).setForce(f[1], val)
@@ -238,9 +237,13 @@ def main():
         truss.calculateMemberForces()
         # print(truss.joints[0].getDOF(2).force)
         truss.getAnswerForces()
+        # Assign Estimated Truss for HSSs
+        if (isEstimation):
+            estTruss = truss
+            isEstimation = False # Only first pass is load estimation point
         # Apply structural iterations
-        if established:
-            truss.connectHSSIterations(state)
+        # if established:
+        #     truss.connectHSSIterations(state)
         # l = truss.getMemberByID(2)
         # print(l.jointA.x, l.jointA.y)
         # print(l.jointB.x, l.jointB.y)
@@ -257,7 +260,12 @@ def main():
         # prevLoad = loading.getTotal()
         print("STATE IS", fullPass)
         if not fullPass:
-            loading.resetMemberLoad(truss.chooseHSSs(HSSs, truss.selectSpan('lower'), truss.selectSpan('height'), toggleUptick))
+            loading.resetMemberLoad(estTruss.chooseHSSs(HSSs, estTruss.selectSpan('lower'), estTruss.selectSpan('height'), toggleUptick))
+            # Apply to current truss
+            structure = []
+            for m in estTruss.members:
+                structure = structure + [[m.id, m.structure]]
+            truss.connectHSSs(structure)
         else:
             truss.connectHSSs(prevState)
         print("Picked HSSs")
@@ -289,6 +297,7 @@ def main():
                 if f[0] != pointOfDeflection:
                     val = 0
                 else:
+                    # Not completely expandable
                     val = -1
             virtualTruss.fetchJoint(f[0]).setForce(f[1], val)
         # for j in virtualTruss.joints:
@@ -331,7 +340,6 @@ def main():
         # maxTruss.chooseHSSs(HSSs, maxTruss.selectSpan('lower'), maxTruss.selectSpan('upper'), True)
         df = 0.5*(loading.getLiveWeight()/loading.getSelfWeight())*visualDisp
         maxDisp = visualDisp + (DAF*df)
-        print(maxDisp)
         if maxDisp > 1/350:
             # Must recalculate
             fullPass = False
@@ -340,7 +348,6 @@ def main():
         if fullPass:
             break
         fullPass = True
-        print("LOAD OF", str(loading.getTotal()) + "kN (per loading point)")
         print("Made full pass")
         truss.display()
         # Save previous HSSs for verification
@@ -348,8 +355,8 @@ def main():
         for m in truss.members:
             prevState = prevState + [[m.id, m.structure]]
     print("-----RESULT-----")
-    truss.compileDofs()
     cost = 0
+    # Compute Cost
     for m in truss.members:
         if m.structure.isCustom:
             mn = m.structure.deadLoad / 9.81
@@ -358,6 +365,21 @@ def main():
             cost = cost + m.structure.mass*m.length*3
     for j in truss.joints:
         cost = cost + 750
+    # Get Fixed Forces
+    truss.compileDofs()
+    restrictedDofs = []
+    for point in restrict:
+        if point[1] == 'x':
+            restrictedDofs = restrictedDofs + [(int(point[0])*2) - 1]
+        elif point[1] == 'y':
+            restrictedDofs = restrictedDofs + [(int(point[0])*2)]
+        else:
+            restrictedDofs = restrictedDofs + [(int(point[0])*2) - 1]
+            restrictedDofs = restrictedDofs + [(int(point[0])*2)]
+    for d in truss.DOFs:
+        for r in restrictedDofs:
+            if r == d.id:
+                print("DOF", d.id, "=>", slideRuleAccuracy(d.force))
     print("LOAD OF", str(loading.getTotal()) + "kN (per loading point)")
     print("TOTAL COST OF $" + str(cost))
     truss.display()
