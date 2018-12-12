@@ -165,13 +165,14 @@ class Section:
     def getFOSs(self, M, V):
         self.Mt = M
         self.Vt = V
-        self.safety.setComp(stress_c/((self.Mt*self.yBar)/self.I))
-        self.safety.setTen(stress_t/((self.Mt*self.y)/self.I))
+        self.safety.setComp(stress_c/((self.Mt*self.y)/self.I))
+        self.safety.setTen(stress_t/((self.Mt*self.yBar)/self.I))
         sheers = [stress_sm, stress_sg]
         planes = [self.SpM, self.SpG]
         res = []
         for c in range(0, 2, 1):
             res = res + [sheers[c]/((self.Vt*planes[c].Q)/(self.I*planes[c].b))]
+            print(((self.Vt*planes[c].Q)/(self.I*planes[c].b)))
         self.safety.setMSheer(res[0])
         self.safety.setGSheer(res[1])
         return True
@@ -215,6 +216,11 @@ def main():
     return True
 
 main()
+
+def test():
+    print(4*mh.sqrt(2)/3 - 2/3)
+
+test()
 
 # p = []
 # M = 95.13
